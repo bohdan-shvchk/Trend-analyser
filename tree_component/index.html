@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; font-size: 13px; background: transparent; }
+
+  .tree { padding: 2px 0; }
+
+  .node-row {
+    display: flex;
+    align-items: center;
+    padding: 2px 0;
+    line-height: 1.4;
+  }
+  .node-row:hover { background: rgba(0,0,0,0.04); border-radius: 3px; }
+
+  .toggle {
+    width: 16px;
+    min-width: 16px;
+    cursor: pointer;
+    color: #888;
+    font-size: 10px;
+    text-align: center;
+    user-select: none;
+  }
+  .toggle:hover { color: #333; }
+
+  .children {
+    margin-left: 16px;
+    padding-left: 8px;
+    border-left: 1px solid #ddd;
+  }
+  .children.hidden { display: none; }
+
+  input[type=checkbox] { margin: 0 5px 0 2px; cursor: pointer; }
+  label { cursor: pointer; color: #333; }
+
+  .actions {
+    display: flex;
+    gap: 6px;
+    padding: 8px 0 4px;
+    border-top: 1px solid #eee;
+    margin-top: 6px;
+  }
+  .btn {
+    flex: 1;
+    padding: 5px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    background: #fff;
+  }
+  .btn:hover { opacity: 0.85; }
+
+  .count { font-size: 11px; color: #888; margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="count" id="count">0 активних</div>
+<div class="tree" id="tree"></div>
+<div class="actions">
+  <button class="btn" onclick="selectAll()">Всі</button>
+  <button class="btn" onclick="selectNone()">Зняти всі</button>
+  <button class="btn" onclick="setDefaults()">↺ Defaults</button>
+</div>
+
+<script>
+  var nodes = [];
+  var checked = new Set();
+  var expanded = new Set();
+  var defaults = [];
+
+  function renderNode(parent, node, depth) {
+    var hasChildren = node.children && node.children.length > 0;
+
+    var row = document.createElement('div');
+    row.className = 'node-row';
+
+    var toggle = document.createElement('span');
+    toggle.className = 'toggle';
+    if (hasChildren) {
+      toggle.textContent = expanded.has(node.value) ? '▾' : '▸';
+      toggle.onclick = (function(n) {
+        return function() {
+          if (expanded.has(n.value)) expanded.delete(n.value);
+          else expanded.add(n.value);
+          rerenderTree();
+        };
+      })(node);
+    }
+
+    var cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.id = 'cb_' + node.value.replace(/\W/g, '_');
+    cb.checked = checked.has(node.value);
+    cb.onchange = (function(v) {
+      return function() {
+        if (this.checked) checked.add(v);
+        else checked.delete(v);
+        updateCount();
+        save();
+      };
+    })(node.value);
+
+    var label = document.createElement('label');
+    label.htmlFor = cb.id;
+    label.textContent = node.label;
+
+    row.appendChild(toggle);
+    row.appendChild(cb);
+    row.appendChild(label);
+    parent.appendChild(row);
+
+    if (hasChildren) {
+      var childWrap = document.createElement('div');
+      childWrap.className = 'children' + (expanded.has(node.value) ? '' : ' hidden');
+      node.children.forEach(function(child) {
+        renderNode(childWrap, child, depth + 1);
+      });
+      parent.appendChild(childWrap);
+    }
+  }
+
+  function rerenderTree() {
+    var el = document.getElementById('tree');
+    el.innerHTML = '';
+    nodes.forEach(function(n) { renderNode(el, n, 0); });
+    updateCount();
+    setHeight();
+  }
+
+  function updateCount() {
+    document.getElementById('count').textContent = checked.size + ' активних';
+  }
+
+  function setHeight() {
+    var h = document.body.scrollHeight;
+    window.parent.postMessage({ type: 'streamlit:setFrameHeight', height: h }, '*');
+  }
+
+  function selectAll() {
+    function addAll(list) {
+      list.forEach(function(n) {
+        checked.add(n.value);
+        if (n.children) addAll(n.children);
+      });
+    }
+    addAll(nodes);
+    rerenderTree();
+    save();
+  }
+
+  function selectNone() {
+    checked.clear();
+    rerenderTree();
+    save();
+  }
+
+  function setDefaults() {
+    checked = new Set(defaults);
+    rerenderTree();
+    save();
+  }
+
+  function save() {
+    window.parent.postMessage({
+      type: 'streamlit:setComponentValue',
+      value: { checked: Array.from(checked), expanded: Array.from(expanded) }
+    }, '*');
+  }
+
+  window.addEventListener('message', function(event) {
+    if (event.data.type === 'streamlit:render') {
+      var args = event.data.args || {};
+      nodes = args.nodes || [];
+      checked = new Set(args.checked || []);
+      expanded = new Set(args.expanded || []);
+      defaults = args.defaults || [];
+      rerenderTree();
+    }
+  });
+
+  window.parent.postMessage({ type: 'streamlit:componentReady', apiVersion: 1 }, '*');
+</script>
+</body>
+</html>

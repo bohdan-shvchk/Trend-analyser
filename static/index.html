@@ -1,0 +1,2089 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trends Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #070c14; --bg2: #0c1220; --bg3: #111827;
+    --glass: rgba(255,255,255,0.04); --glass-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08); --border-bright: rgba(255,255,255,0.15);
+    --accent: oklch(0.62 0.2 245); --accent-dim: oklch(0.62 0.2 245 / 0.15); --accent-glow: oklch(0.62 0.2 245 / 0.3);
+    --violet: oklch(0.62 0.2 285); --violet-dim: oklch(0.62 0.2 285 / 0.15);
+    --green: oklch(0.65 0.16 155); --green-dim: oklch(0.65 0.16 155 / 0.15);
+    --amber: oklch(0.72 0.16 75); --amber-dim: oklch(0.72 0.16 75 / 0.15);
+    --red: oklch(0.62 0.2 25); --red-dim: oklch(0.62 0.2 25 / 0.15);
+    --pinterest: oklch(0.62 0.22 10); --pinterest-dim: oklch(0.62 0.22 10 / 0.15); --pinterest-glow: oklch(0.62 0.22 10 / 0.3);
+    --text: #e2e8f0; --text-muted: #64748b; --text-dim: #94a3b8;
+    --sidebar-w: 270px; --radius: 10px; --radius-sm: 6px;
+  }
+  html, body, #root { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.5; overflow: hidden; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: linear-gradient(180deg, #0b1220 0%, #070c14 100%); overflow: hidden; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+  .sidebar-header { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .logo { display: flex; align-items: center; gap: 9px; }
+  .logo-icon { width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent), var(--violet)); border-radius: 7px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-badge { font-size: 9px; font-weight: 600; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-glow); padding: 1px 6px; border-radius: 20px; margin-left: auto; }
+
+  .sidebar-body { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 14px; }
+  .sec-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 6px; }
+
+  .select-row { display: flex; gap: 7px; }
+  .sel { flex: 1; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-dim); font-family: inherit; font-size: 12px; padding: 7px 10px; appearance: none; cursor: pointer; transition: border-color 0.15s; outline: none; }
+  .sel:focus, .sel:hover { border-color: var(--border-bright); color: var(--text); }
+  .sel option { background: #111827; }
+
+  .check-row { display: flex; align-items: center; gap: 7px; cursor: pointer; user-select: none; }
+
+  .source-toggle { display: flex; gap: 0; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+  .source-btn { flex: 1; padding: 7px 10px; font-size: 11.5px; font-weight: 600; font-family: inherit; cursor: pointer; border: none; background: transparent; color: var(--text-muted); transition: all 0.15s; }
+  .source-btn.active-google { background: var(--accent-dim); color: var(--accent); }
+  .source-btn.active-pinterest { background: var(--pinterest-dim); color: var(--pinterest); }
+  .check-row input[type=checkbox] { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+  .check-row span { font-size: 12px; color: var(--text-dim); }
+
+  .num-input { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: 'DM Mono', monospace; font-size: 12px; padding: 6px 10px; outline: none; width: 100%; transition: border-color 0.15s; }
+  .num-input:focus { border-color: var(--accent); }
+
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+  .search-input { width: 100%; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 12px; padding: 8px 10px 8px 32px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+
+  .cat-tree { display: flex; flex-direction: column; gap: 3px; }
+  .cat-parent { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; user-select: none; transition: background 0.12s; }
+  .cat-parent:hover { background: var(--glass-hover); }
+  .cat-chevron { color: var(--text-muted); transition: transform 0.18s; flex-shrink: 0; }
+  .cat-chevron.open { transform: rotate(90deg); }
+  .cat-label { font-size: 12px; font-weight: 500; color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-count { font-size: 10px; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 10px; flex-shrink: 0; }
+  .cat-checkbox { width: 14px; height: 14px; border: 1.5px solid var(--border-bright); border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.12s; cursor: pointer; }
+  .cat-checkbox.checked { background: var(--accent); border-color: var(--accent); }
+  .cat-children { padding-left: 18px; display: flex; flex-direction: column; gap: 2px; }
+  .cat-child { display: flex; align-items: center; gap: 7px; padding: 4px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s; }
+  .cat-child:hover { background: var(--glass-hover); }
+  .cat-child-label { font-size: 11.5px; color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cat-actions { display: flex; gap: 5px; margin-top: 4px; }
+  .cat-act-btn { flex: 1; padding: 4px 6px; font-size: 11px; font-family: inherit; background: var(--glass); border: 1px solid var(--border); border-radius: 4px; color: var(--text-muted); cursor: pointer; transition: all 0.12s; }
+  .cat-act-btn:hover { border-color: var(--border-bright); color: var(--text); }
+  .cat-count-label { font-size: 10px; color: var(--text-muted); margin-bottom: 4px; }
+
+  .btn { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 14px; border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; letter-spacing: 0.1px; text-decoration: none; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--violet)); color: #fff; box-shadow: 0 4px 16px var(--accent-glow); }
+  .btn-primary:hover:not(:disabled) { opacity: 0.88; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+  .btn-ghost { background: var(--glass); border: 1px solid var(--border); color: var(--text-dim); }
+  .btn-ghost:hover { background: var(--glass-hover); border-color: var(--border-bright); color: var(--text); }
+  .btn-actions { display: flex; flex-direction: column; gap: 7px; }
+
+  .crawl-status { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--green-dim); border: 1px solid oklch(0.65 0.16 155 / 0.25); font-size: 11px; color: var(--green); }
+  .crawl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; flex-shrink: 0; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0; background: rgba(7,12,20,0.8); backdrop-filter: blur(10px); }
+  .topbar-tabs { display: flex; gap: 2px; }
+  .tab { padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.15s; border: 1px solid transparent; display: flex; align-items: center; gap: 6px; }
+  .tab:hover { color: var(--text-dim); background: var(--glass); }
+  .tab.active { color: var(--text); background: rgba(255,255,255,0.06); border-color: var(--border); }
+  .tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: none; }
+  .tab.active .tab-dot { display: block; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .topbar-pill { font-size: 11px; color: var(--text-muted); background: var(--glass); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--violet)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+
+  .content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  .card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.3px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .card-title-main { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .metric-card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; position: relative; overflow: hidden; transition: border-color 0.15s, transform 0.15s; }
+  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .metric-card.blue::before { background: linear-gradient(90deg, var(--accent), transparent); }
+  .metric-card.violet::before { background: linear-gradient(90deg, var(--violet), transparent); }
+  .metric-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+  .metric-card.amber::before { background: linear-gradient(90deg, var(--amber), transparent); }
+  .metric-card:hover { border-color: var(--border-bright); transform: translateY(-1px); }
+  .metric-label { font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.3px; margin-bottom: 8px; text-transform: uppercase; }
+  .metric-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; margin-bottom: 8px; }
+  .metric-value.blue { color: var(--accent); }
+  .metric-value.violet { color: var(--violet); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.amber { color: var(--amber); }
+  .metric-delta { font-size: 11px; color: var(--text-muted); }
+
+  .charts-row { display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; }
+  @media (max-width: 1400px) { .charts-row { grid-template-columns: 1fr; } }
+  .chart-wrap { position: relative; height: 240px; }
+
+  .filter-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .filter-check { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim); cursor: pointer; user-select: none; }
+  .filter-check input { accent-color: var(--accent); cursor: pointer; }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 9px 12px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12.5px; color: var(--text-dim); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .niche-name { color: var(--text); font-weight: 500; }
+  .trend-spark { display: flex; align-items: flex-end; gap: 2px; height: 22px; }
+  .spark-bar { width: 4px; border-radius: 1px; }
+  .score-bar-wrap { display: flex; align-items: center; gap: 7px; }
+  .score-bar-bg { height: 4px; width: 70px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 2px; }
+  .score-val { font-size: 11px; font-weight: 600; color: var(--text); font-family: 'DM Mono', monospace; }
+
+  .label-sel { background: var(--glass); border: 1px solid var(--border); border-radius: 20px; color: var(--text-dim); font-family: inherit; font-size: 10.5px; font-weight: 600; padding: 3px 8px; appearance: none; cursor: pointer; outline: none; transition: all 0.12s; }
+  .label-sel:hover { border-color: var(--border-bright); }
+  .label-sel.relevant { color: var(--green); border-color: oklch(0.65 0.16 155 / 0.4); background: var(--green-dim); }
+  .label-sel.blocked { color: var(--red); border-color: oklch(0.62 0.2 25 / 0.4); background: var(--red-dim); }
+  .label-sel.review { color: var(--amber); border-color: oklch(0.72 0.16 75 / 0.4); background: var(--amber-dim); }
+  .label-sel.priority { color: var(--accent); border-color: var(--accent-glow); background: var(--accent-dim); }
+
+  .comp-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+  .comp-low { background: var(--green-dim); color: var(--green); }
+  .comp-med { background: var(--amber-dim); color: var(--amber); }
+  .comp-high { background: var(--red-dim); color: var(--red); }
+
+  .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); border: 1px solid oklch(0.62 0.2 245 / 0.3); }
+
+  .blocked-section { margin-top: 16px; }
+  .blocked-toggle { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--text-muted); padding: 6px 0; user-select: none; }
+  .blocked-toggle:hover { color: var(--text-dim); }
+  .blocked-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+  .blocked-item { display: flex; align-items: center; justify-content: space-between; padding: 5px 10px; background: var(--red-dim); border: 1px solid oklch(0.62 0.2 25 / 0.2); border-radius: 5px; font-size: 11.5px; }
+  .unblock-btn { font-size: 11px; color: var(--text-muted); background: none; border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; cursor: pointer; font-family: inherit; transition: all 0.12s; }
+  .unblock-btn:hover { border-color: var(--green); color: var(--green); }
+
+  .progress-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--violet)); border-radius: 2px; transition: width 0.4s; }
+
+  .trend-line-wrap { position: relative; height: 200px; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .kw-list { display: flex; flex-direction: column; gap: 4px; }
+  .kw-item { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: var(--glass); border: 1px solid var(--border); border-radius: 5px; font-size: 12px; transition: border-color 0.12s; }
+  .kw-item:hover { border-color: var(--border-bright); }
+  .kw-item-term { color: var(--text); }
+  .kw-item-vol { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--accent); font-weight: 600; }
+
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-row { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: center; gap: 14px; transition: border-color 0.15s; }
+  .history-row:hover { border-color: var(--border-bright); }
+  .history-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .history-info { flex: 1; }
+  .history-title { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .history-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; flex-wrap: wrap; }
+  .history-stat-val { font-size: 14px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+  .history-stat-label { font-size: 10px; color: var(--text-muted); }
+  .icon-btn { width: 28px; height: 28px; border-radius: 5px; background: var(--glass); border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; text-decoration: none; flex-shrink: 0; }
+  .icon-btn:hover { background: var(--glass-hover); border-color: var(--border-bright); color: var(--text); }
+
+  .subniche-list { display: flex; flex-direction: column; gap: 6px; }
+  .subniche-item { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; transition: border-color 0.15s; }
+  .subniche-item.expanded { border-color: var(--border-bright); }
+  .subniche-header { display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer; user-select: none; transition: background 0.12s; }
+  .subniche-header:hover { background: var(--glass-hover); }
+  .subniche-rank { font-size: 10px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text-muted); background: rgba(255,255,255,0.06); width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .subniche-name { font-size: 12.5px; font-weight: 600; color: var(--text); flex: 1; }
+  .subniche-score { font-size: 11px; color: var(--text-muted); margin-right: 4px; }
+  .subniche-chevron { color: var(--text-muted); transition: transform 0.18s; }
+  .subniche-chevron.open { transform: rotate(180deg); }
+  .subniche-body { padding: 4px 14px 12px 44px; display: flex; flex-direction: column; gap: 5px; }
+  .subniche-kw { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-dim); }
+  .subniche-kw::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+  .subniche-kw-vol { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--green); margin-left: auto; }
+  .subniche-kw-trend { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+  .subniche-kw-trend.up { background: var(--green-dim); color: var(--green); }
+  .subniche-kw-trend.flat { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+  .subniche-kw-trend.down { background: var(--red-dim); color: var(--red); }
+
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); }
+  .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .center-spinner { display: flex; justify-content: center; align-items: center; padding: 60px; }
+
+  .run-sel-row { display: flex; align-items: center; gap: 8px; margin-bottom: 16px; }
+  .run-sel-label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+const LABEL_OPTS = ['none','relevant','blocked','review','priority'];
+const LABEL_DISPLAY = { none:'— Label', relevant:'✅ Relevant', blocked:'❌ Blocked', review:'🔍 Review', priority:'⭐ Priority' };
+
+// ── Sparkline ──────────────────────────────────────────────────
+function Sparkline({ data, trend }) {
+  const color = trend==='up' ? 'oklch(0.65 0.16 155)' : trend==='down' ? 'oklch(0.62 0.2 25)' : 'oklch(0.62 0.2 245)';
+  const max = Math.max(...data, 1);
+  return (
+    <div className="trend-spark">
+      {data.map((v,i) => (
+        <div key={i} className="spark-bar" style={{ height:`${(v/max)*100}%`, background: i===data.length-1 ? color : color+'55' }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Score Bar ──────────────────────────────────────────────────
+function ScoreBar({ score }) {
+  const color = score>=80 ? 'var(--green)' : score>=65 ? 'var(--accent)' : 'var(--amber)';
+  return (
+    <div className="score-bar-wrap">
+      <div className="score-bar-bg"><div className="score-bar-fill" style={{width:`${Math.min(score,100)}%`,background:color}}/></div>
+      <span className="score-val">{score}</span>
+    </div>
+  );
+}
+
+// ── Label Select ───────────────────────────────────────────────
+function LabelSel({ label, onChange }) {
+  return (
+    <select className={`label-sel ${label}`} value={label} onChange={e=>onChange(e.target.value)}>
+      {LABEL_OPTS.map(l => <option key={l} value={l}>{LABEL_DISPLAY[l]}</option>)}
+    </select>
+  );
+}
+
+// ── Bar Chart ──────────────────────────────────────────────────
+function BarChart({ data }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (!ref.current || !data.length) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const labels = data.map(d => d.name.length > 18 ? d.name.slice(0,18)+'…' : d.name);
+    const scores = data.map(d => d.score);
+    const colors = scores.map(s => s>=85 ? 'oklch(0.62 0.2 245)' : s>=70 ? 'oklch(0.62 0.2 265)' : 'oklch(0.62 0.2 285)');
+    chartRef.current = new Chart(ref.current, {
+      type:'bar',
+      data:{ labels, datasets:[{ data:scores, backgroundColor:colors, borderRadius:5, borderSkipped:false, barThickness:18 }] },
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{duration:600},
+        plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#111827', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8', padding:10, callbacks:{label:ctx=>` Score: ${ctx.raw}`} }},
+        scales:{
+          x:{ min:0, max:100, grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#64748b',font:{size:10}}, border:{color:'transparent'} },
+          y:{ grid:{display:false}, ticks:{color:'#94a3b8',font:{size:11}}, border:{color:'transparent'} }
+        }
+      }
+    });
+    return () => { if(chartRef.current) chartRef.current.destroy(); };
+  }, [data]);
+  return <div className="chart-wrap"><canvas ref={ref}/></div>;
+}
+
+// ── Trend Line ─────────────────────────────────────────────────
+function Spark({ values }) {
+  if (!values || values.length === 0) return <span>—</span>;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const h = 30;
+  const w = values.length * 4;
+  const points = values.map((v, i) => {
+    const y = h - ((v - min) / range) * (h - 4);
+    return `${i * 4},${y}`;
+  }).join(' ');
+  return (
+    <svg width={w} height={h} style={{display:'inline-block', verticalAlign:'middle'}}>
+      <polyline points={points} fill="none" stroke="var(--accent)" strokeWidth="1.5" vectorEffect="non-scaling-stroke"/>
+    </svg>
+  );
+}
+
+function TrendChart({ chartData }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    if (chartRef.current) chartRef.current.destroy();
+    chartRef.current = new Chart(ref.current, {
+      type:'line',
+      data:{ labels: chartData?.labels||[], datasets:[{
+        data: chartData?.values||[], tension:0.4, fill:true,
+        borderColor:'oklch(0.62 0.2 245)', borderWidth:2,
+        backgroundColor:(ctx)=>{ const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height); g.addColorStop(0,'oklch(0.62 0.2 245 / 0.25)'); g.addColorStop(1,'oklch(0.62 0.2 245 / 0)'); return g; },
+        pointBackgroundColor:'oklch(0.62 0.2 245)', pointRadius:4, pointHoverRadius:6,
+      }]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{ backgroundColor:'#111827', borderColor:'rgba(255,255,255,0.1)', borderWidth:1, titleColor:'#e2e8f0', bodyColor:'#94a3b8', padding:10, callbacks:{label:ctx=>` Interest: ${Math.round(ctx.raw)}`} }},
+        scales:{
+          x:{ grid:{color:'rgba(255,255,255,0.04)'}, ticks:{color:'#64748b',font:{size:11}}, border:{color:'transparent'} },
+          y:{ min:0, max:100, grid:{color:'rgba(255,255,255,0.05)'}, ticks:{color:'#64748b',font:{size:10},stepSize:25}, border:{color:'transparent'} }
+        }
+      }
+    });
+    return () => { if(chartRef.current) chartRef.current.destroy(); };
+  }, [chartData]);
+  return <div className="trend-line-wrap"><canvas ref={ref}/></div>;
+}
+
+// ── Category Tree ──────────────────────────────────────────────
+function CategoryTree({ categories, enabled, onToggle, onSelectAll, onSelectNone, onDefaults }) {
+  const [open, setOpen] = useState({});
+  const enabledSet = new Set(enabled);
+  if (!categories.length) return <div style={{color:'var(--text-muted)',fontSize:11}}>Завантаження…</div>;
+  return (
+    <div>
+      <div className="cat-count-label">{enabled.length} активних</div>
+      <div className="cat-tree">
+        {categories.map(cat => {
+          const isOpen = open[cat.path];
+          const isChecked = enabledSet.has(cat.path);
+          return (
+            <div key={cat.path}>
+              <div className="cat-parent" onClick={()=>setOpen(p=>({...p,[cat.path]:!p[cat.path]}))}>
+                <div className={`cat-checkbox ${isChecked?'checked':''}`} onClick={e=>{e.stopPropagation();onToggle(cat.path);}}>
+                  {isChecked && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                </div>
+                <span className="cat-label">{cat.name}</span>
+                {cat.count>0 && <span className="cat-count">{cat.count}</span>}
+                {cat.children?.length>0 && (
+                  <svg className={`cat-chevron ${isOpen?'open':''}`} width="12" height="12" viewBox="0 0 12 12" fill="none">
+                    <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                )}
+              </div>
+              {isOpen && cat.children?.map(child => (
+                <div className="cat-children" key={child.path}>
+                  <div className="cat-child" onClick={()=>onToggle(child.path)}>
+                    <div className={`cat-checkbox ${enabledSet.has(child.path)?'checked':''}`} style={{width:12,height:12}}>
+                      {enabledSet.has(child.path) && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span className="cat-child-label">{child.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+      <div className="cat-actions">
+        <button className="cat-act-btn" onClick={onSelectAll}>Всі</button>
+        <button className="cat-act-btn" onClick={onSelectNone}>Зняти всі</button>
+        <button className="cat-act-btn" onClick={onDefaults}>↺ Defaults</button>
+      </div>
+    </div>
+  );
+}
+
+// ── Sub-niches ─────────────────────────────────────────────────
+function SubNichesBlock({ niches, geo }) {
+  const [openId, setOpenId] = useState(null);
+  const [kwMap, setKwMap] = useState({});
+  const top5 = [...niches].sort((a,b)=>b.score-a.score).slice(0,5);
+  const scoreColor = s => s>=85?'var(--green)':s>=70?'var(--accent)':'var(--amber)';
+
+  const toggle = async (id, name) => {
+    if (openId===id) { setOpenId(null); return; }
+    setOpenId(id);
+    if (!kwMap[name]) {
+      try {
+        const d = await fetch(`/api/subniche?keyword=${encodeURIComponent(name)}&geo=${geo}`).then(r=>r.json());
+        setKwMap(p=>({...p,[name]:d}));
+      } catch { setKwMap(p=>({...p,[name]:[]})); }
+    }
+  };
+  if (!top5.length) return null;
+  return (
+    <div className="card">
+      <div className="card-title">
+        <span className="card-title-main">Sub-niches Top-5</span>
+        <span style={{marginLeft:'auto',fontSize:11,color:'var(--text-muted)'}}>Натисни щоб розкрити</span>
+      </div>
+      <div className="subniche-list">
+        {top5.map((n,i) => {
+          const kws = kwMap[n.name]||[];
+          const isOpen = openId===n.id;
+          return (
+            <div key={n.id} className={`subniche-item ${isOpen?'expanded':''}`}>
+              <div className="subniche-header" onClick={()=>toggle(n.id,n.name)}>
+                <div className="subniche-rank">{i+1}</div>
+                <span className="subniche-name">{n.name}</span>
+                <span className="subniche-score">score: <span style={{color:scoreColor(n.score)}}>{n.score}</span></span>
+                <svg className={`subniche-chevron ${isOpen?'open':''}`} width="13" height="13" viewBox="0 0 12 12" fill="none">
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              {isOpen && (
+                <div className="subniche-body">
+                  {!kws.length
+                    ? <div style={{color:'var(--text-muted)',fontSize:11}}>Немає суб-ніш в БД.</div>
+                    : kws.map((kw,ki) => (
+                      <div className="subniche-kw" key={ki}>
+                        <span>{kw.term}</span>
+                        <span className={`subniche-kw-trend ${kw.trend}`}>{kw.trend==='up'?'↑ Росте':kw.trend==='down'?'↓ Падає':'→ Стабільно'}</span>
+                        <span className="subniche-kw-vol">{Number(kw.vol||0).toLocaleString()}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ── Overview ───────────────────────────────────────────────────
+function LiveCrawlList({ items, currentKw }) {
+  const trendIcon = t => t === 'up' ? '↑' : t === 'down' ? '↓' : '→';
+  const trendColor = t => t === 'up' ? 'var(--green)' : t === 'down' ? 'var(--red)' : 'var(--text-muted)';
+  return (
+    <div className="card">
+      <div className="card-title">
+        <span className="card-title-main">Активний краулінг</span>
+        <span style={{marginLeft:'auto',fontSize:11,color:'var(--text-muted)'}}>{items.length} знайдено</span>
+      </div>
+      {currentKw && (
+        <div style={{fontSize:11,color:'var(--text-muted)',marginBottom:10,display:'flex',gap:6,alignItems:'center'}}>
+          <span className="spinner" style={{width:10,height:10,borderWidth:1.5}}/>
+          <span>Перевіряю: <span style={{color:'var(--accent)'}}>{currentKw}</span></span>
+        </div>
+      )}
+      {items.length === 0 ? (
+        <div style={{fontSize:11,color:'var(--text-muted)',padding:'12px 0',textAlign:'center'}}>Очікую перші результати…</div>
+      ) : (
+        <div className="table-wrap" style={{maxHeight:320,overflowY:'auto'}}>
+          <table>
+            <thead>
+              <tr>
+                <th style={{width:40}}>#</th>
+                <th>Ключове слово</th>
+                <th>Батьківська</th>
+                <th style={{textAlign:'right',width:60}}>Оцінка</th>
+                <th style={{textAlign:'center',width:40}}>Тренд</th>
+                <th style={{textAlign:'right',width:60}}>Інтерес</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((n, i) => (
+                <tr key={i}>
+                  <td style={{fontFamily:'DM Mono',fontSize:11,color:'var(--text-muted)'}}>{i+1}</td>
+                  <td style={{color:'var(--text)',fontWeight:500}}>{n.keyword}</td>
+                  <td style={{color:'var(--text-muted)',fontSize:12}}>{n.parent || '—'}</td>
+                  <td style={{textAlign:'right',fontFamily:'DM Mono',fontSize:11,fontWeight:600,color:'var(--accent)'}}>{n.score}</td>
+                  <td style={{textAlign:'center',fontSize:11,color:trendColor(n.trend)}}>{trendIcon(n.trend)}</td>
+                  <td style={{textAlign:'right',fontFamily:'DM Mono',fontSize:11}}>{n.avg}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverviewSection({ niches, setNiches, minScore, geo, runDates, selectedRun, onRunChange, crawling, liveItems, crawlKw }) {
+  const [showBlocked, setShowBlocked] = useState(false);
+  const [showOnlyReview, setShowOnlyReview] = useState(false);
+  const [blockedOpen, setBlockedOpen] = useState(false);
+
+  const saveLabel = async (name, label) => {
+    await fetch('/api/labels', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({keyword:name, label}),
+    });
+  };
+
+  const changeLabel = (id, newLabel) => {
+    setNiches(prev => prev.map(n => n.id===id ? {...n,label:newLabel} : n));
+    const n = niches.find(x=>x.id===id);
+    if (n) saveLabel(n.name, newLabel);
+  };
+
+  const unblock = async (name) => {
+    await fetch('/api/labels/unblock', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({keyword:name})});
+    setNiches(prev => prev.map(n => n.name===name ? {...n,label:'none'} : n));
+  };
+
+  let display = niches.filter(n => n.score >= minScore);
+  if (!showBlocked) display = display.filter(n => n.label !== 'blocked');
+  if (showOnlyReview) display = display.filter(n => n.label === 'review');
+
+  const blocked = niches.filter(n => n.label==='blocked');
+  const relevant = niches.filter(n => n.label==='relevant').length;
+  const reviewed = niches.filter(n => n.label!=='none').length;
+  const avgScore = niches.length ? Math.round(niches.reduce((a,n)=>a+n.score,0)/niches.length) : 0;
+
+  if (!niches.length && !crawling) return (
+    <div className="empty-state">
+      <div style={{fontSize:28,marginBottom:10,opacity:0.4}}>📊</div>
+      <div>Немає даних. Запусти краулер щоб почати.</div>
+    </div>
+  );
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      {crawling && <LiveCrawlList items={liveItems || []} currentKw={crawlKw}/>}
+
+      {/* Run selector */}
+      {runDates.length > 1 && (
+        <div className="run-sel-row">
+          <span className="run-sel-label">Запуск:</span>
+          <select className="sel" style={{flex:'none',minWidth:140}} value={selectedRun} onChange={e=>onRunChange(e.target.value)}>
+            {runDates.map(d=><option key={d} value={d}>📅 {d}</option>)}
+          </select>
+        </div>
+      )}
+
+      {/* Metrics */}
+      <div className="metrics-grid">
+        <div className="metric-card blue">
+          <div className="metric-label">Ніш знайдено</div>
+          <div className="metric-value blue">{niches.length}</div>
+          <div className="metric-delta">в цьому запуску</div>
+        </div>
+        <div className="metric-card green">
+          <div className="metric-label">Висока оцінка</div>
+          <div className="metric-value green">{niches.filter(n=>n.score>=minScore).length}</div>
+          <div className="metric-delta">оцінка ≥ {minScore}</div>
+        </div>
+        <div className="metric-card violet">
+          <div className="metric-label">Сер. оцінка</div>
+          <div className="metric-value violet">{avgScore}</div>
+          <div className="metric-delta">цей запуск</div>
+        </div>
+        <div className="metric-card amber">
+          <div className="metric-label">Помічено</div>
+          <div className="metric-value amber">{reviewed}/{niches.length}</div>
+          <div className="metric-delta">{relevant} relevant</div>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <div className="charts-row">
+        <div className="card">
+          <div className="card-title"><span className="card-title-main">Score Distribution</span></div>
+          <BarChart data={[...niches].sort((a,b)=>b.score-a.score).slice(0,8)} />
+        </div>
+        <div className="card">
+          <div className="card-title">
+            <span className="card-title-main">Топ-10 ніш</span>
+            <span className="tag" style={{marginLeft:'auto'}}>By Score</span>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead><tr><th>#</th><th>Ніша</th><th>Оцінка</th><th>Тренд</th><th>Мітка</th></tr></thead>
+              <tbody>
+                {[...niches].sort((a,b)=>b.score-a.score).slice(0,10).map((n,i)=>(
+                  <tr key={n.id}>
+                    <td style={{color:'var(--text-muted)',fontFamily:'DM Mono',fontSize:11}}>{String(i+1).padStart(2,'0')}</td>
+                    <td><span className="niche-name">{n.name}</span></td>
+                    <td><ScoreBar score={n.score}/></td>
+                    <td><Sparkline data={n.spark} trend={n.trend}/></td>
+                    <td><LabelSel label={n.label} onChange={v=>changeLabel(n.id,v)}/></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-niches */}
+      <SubNichesBlock niches={niches} geo={geo} />
+
+      {/* Full table */}
+      <div className="card">
+        <div className="card-title">
+          <span className="card-title-main">Всі ніші</span>
+          <span style={{fontSize:11,color:'var(--text-muted)',marginLeft:'auto'}}>{display.length} / {niches.length}</span>
+        </div>
+        <div className="filter-row">
+          <label className="filter-check">
+            <input type="checkbox" checked={showBlocked} onChange={e=>setShowBlocked(e.target.checked)}/>
+            Показати ❌ Заблоковані
+          </label>
+          <label className="filter-check">
+            <input type="checkbox" checked={showOnlyReview} onChange={e=>setShowOnlyReview(e.target.checked)}/>
+            Тільки 🔍 На перевірку
+          </label>
+        </div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Ніша</th><th>Батьківська</th><th>Оцінка</th><th>Тренд</th><th>Сер. інтерес</th><th>Мітка</th></tr>
+            </thead>
+            <tbody>
+              {display.map((n,i)=>(
+                <tr key={n.id}>
+                  <td style={{color:'var(--text-muted)',fontFamily:'DM Mono',fontSize:11}}>{i+1}</td>
+                  <td><span className="niche-name">{n.name}</span></td>
+                  <td style={{color:'var(--text-muted)',fontSize:11.5}}>{n.cat}</td>
+                  <td><ScoreBar score={n.score}/></td>
+                  <td><Sparkline data={n.spark} trend={n.trend}/></td>
+                  <td style={{fontFamily:'DM Mono',fontSize:11,color:'var(--text-dim)'}}>{n.vol}</td>
+                  <td><LabelSel label={n.label} onChange={v=>changeLabel(n.id,v)}/></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Blocked keywords */}
+        {blocked.length > 0 && (
+          <div className="blocked-section">
+            <div className="blocked-toggle" onClick={()=>setBlockedOpen(p=>!p)}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{transition:'transform 0.18s',transform:blockedOpen?'rotate(90deg)':'none'}}>
+                <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              🚫 Заблоковані слова ({blocked.length})
+            </div>
+            {blockedOpen && (
+              <div className="blocked-list">
+                {blocked.map(n=>(
+                  <div className="blocked-item" key={n.id}>
+                    <span style={{fontFamily:'DM Mono',fontSize:11.5}}>{n.name}</span>
+                    <button className="unblock-btn" onClick={()=>unblock(n.name)}>Розблокувати</button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Mini Chart ────────────────────────────────────────────────
+function MiniChart({ values, width = 100, height = 30 }) {
+  if (!values || values.length === 0) return <span>—</span>;
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const range = max - min || 1;
+  const points = values.map((v, i) => ({
+    x: (i / (values.length - 1)) * width,
+    y: height - ((v - min) / range) * (height - 4) - 2
+  }));
+  const pathD = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+  return (
+    <svg width={width} height={height} style={{display:'inline-block',verticalAlign:'middle'}}>
+      <path d={pathD} stroke="var(--accent)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
+}
+
+function InteractiveMiniChart({ node, geo, timeframe, width = 100, height = 30 }) {
+  const [values, setValues] = useState(node.values || []);
+  const [loading, setLoading] = useState(false);
+  const [score, setScore] = useState(node.score || 0);
+  const [trend, setTrend] = useState(node.trend || null);
+
+  const handleClick = async () => {
+    if (values.length > 0 || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/trend-search/graph', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({keyword: node.keyword, geo, timeframe})
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setValues(data.values || []);
+        setScore(data.score || 0);
+        setTrend(data.trend || null);
+      }
+    } catch (e) {
+      console.error('Graph load error:', e);
+    }
+    setLoading(false);
+  };
+
+  if (values.length > 0) {
+    return <MiniChart values={values} width={width} height={height} />;
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={loading}
+      style={{
+        padding: '2px 6px',
+        fontSize: 11,
+        border: '1px solid var(--border)',
+        borderRadius: 4,
+        backgroundColor: loading ? 'var(--bg-secondary)' : 'transparent',
+        color: 'var(--accent)',
+        cursor: loading ? 'wait' : 'pointer',
+        fontWeight: 500
+      }}
+    >
+      {loading ? '⏳' : '📊'}
+    </button>
+  );
+}
+
+// ── Keyword Tree (Recursive) ───────────────────────────────────
+function KeywordTree({ node, depth = 0 }) {
+  const [open, setOpen] = useState(depth < 2);
+  if (!node) return null;
+  const hasChildren = node.children && node.children.length > 0;
+  return (
+    <div style={{ marginLeft: depth > 0 ? 20 : 0 }}>
+      <div className="kw-item" style={{ cursor: hasChildren ? 'pointer' : 'default' }} onClick={() => hasChildren && setOpen(!open)}>
+        <div style={{ display: 'flex', alignItems: 'center', flex: 1, gap: 6 }}>
+          {hasChildren && (
+            <svg width="12" height="12" viewBox="0 0 12 12" style={{ transform: open ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.15s', flexShrink: 0 }}>
+              <path d="M3 2l6 4-6 4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+            </svg>
+          )}
+          {!hasChildren && <div style={{ width: 12 }}/>}
+          <span className="kw-item-term">{node.keyword}</span>
+        </div>
+        {node.vol && <span className="kw-item-vol">{node.vol}</span>}
+      </div>
+      {open && hasChildren && (
+        <div>
+          {node.children.map((child, i) => (
+            <KeywordTree key={i} node={child} depth={depth + 1} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Trend Search Analytics ────────────────────────────────────
+function TrendSearchAnalytics({ tree, geo = 'US', timeframe = '90D' }) {
+  const getTopSubniches = (node, count = 5) => {
+    const all = [];
+    const traverse = (n) => {
+      if (n.keyword !== tree.keyword) {
+        all.push(n);
+      }
+      for (let child of (n.children || [])) {
+        traverse(child);
+      }
+    };
+    for (let child of (node.children || [])) {
+      traverse(child);
+    }
+    return all.sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, count);
+  };
+
+  const getAllNiches = (node) => {
+    const all = [];
+    const traverse = (n, parent = '') => {
+      all.push({ ...n, parent });
+      for (let child of (n.children || [])) {
+        traverse(child, n.keyword);
+      }
+    };
+    traverse(node);
+    return all;
+  };
+
+  const trendIcon = t => t === 'growing' ? '↑' : t === 'declining' ? '↓' : '→';
+  const trendColor = t => t === 'growing' ? 'var(--green)' : t === 'declining' ? 'var(--red)' : 'var(--text-muted)';
+
+  const topSubniches = getTopSubniches(tree);
+  const allNiches = getAllNiches(tree);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div className="card">
+        <div className="card-title"><span className="card-title-main">Sub-niches Top-{topSubniches.length}</span></div>
+        <div className="table-wrap">
+          <table>
+            <tbody>
+              {topSubniches.map((n, i) => (
+                <tr key={i}>
+                  <td style={{width:'30px',fontWeight:600,color:'var(--text-muted)'}}>•</td>
+                  <td style={{flex:1,color:'var(--text)'}}>{n.keyword}</td>
+                  {n.parent && <td style={{color:'var(--text-muted)',fontSize:11}}>→ {n.parent}</td>}
+                  <td style={{textAlign:'right',minWidth:120}}>
+                    {n.values && n.values.length > 0 ? (
+                      <MiniChart values={n.values} width={80} height={24}/>
+                    ) : (
+                      <InteractiveMiniChart node={n} geo={geo} timeframe={timeframe} width={80} height={24}/>
+                    )}
+                  </td>
+                  <td style={{textAlign:'right',minWidth:50,paddingLeft:8}}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'flex-end',gap:8}}>
+                      <span style={{fontFamily:'DM Mono',fontSize:11,fontWeight:600}}>{n.score || '—'}</span>
+                      <span style={{fontSize:11,color:trendColor(n.trend)}}>{trendIcon(n.trend)}</span>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title"><span className="card-title-main">Всі ніші</span><span style={{marginLeft:'auto',fontSize:11,color:'var(--text-muted)'}}>{allNiches.length}</span></div>
+        <div className="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style={{width:'50px'}}>#</th>
+                <th>Ключове слово</th>
+                <th>Батьківська</th>
+                <th style={{width:100}}>Тренд</th>
+                <th style={{textAlign:'right',width:80}}>Оцінка</th>
+                <th style={{textAlign:'center',width:40}}>Напр.</th>
+                <th style={{textAlign:'right',width:60}}>Інтерес</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allNiches.map((n, i) => (
+                <tr key={i}>
+                  <td style={{fontFamily:'DM Mono',fontSize:11,color:'var(--text-muted)'}}>{i+1}</td>
+                  <td style={{color:'var(--text)',fontWeight:500}}>{n.keyword}</td>
+                  <td style={{color:'var(--text-muted)',fontSize:12}}>{n.parent || '—'}</td>
+                  <td style={{paddingRight:4}}>
+                    {n.values && n.values.length > 0 ? (
+                      <MiniChart values={n.values} width={90} height={24}/>
+                    ) : (
+                      <InteractiveMiniChart node={n} geo={geo} timeframe={timeframe} width={90} height={24}/>
+                    )}
+                  </td>
+                  <td style={{textAlign:'right',fontFamily:'DM Mono',fontSize:11,fontWeight:600,color:'var(--accent)'}}>{n.score || '—'}</td>
+                  <td style={{textAlign:'center',fontSize:11,color:trendColor(n.trend)}}>{trendIcon(n.trend)}</td>
+                  <td style={{textAlign:'right',fontFamily:'DM Mono',fontSize:11}}>{n.avg || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title"><span className="card-title-main">Дерево ключових слів</span></div>
+        <div className="kw-list">
+          <KeywordTree node={tree}/>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Search ─────────────────────────────────────────────────────
+function SearchSection({ geo }) {
+  const [inputVal, setInputVal] = useState('');
+  const [timeframe, setTimeframe] = useState('90D');
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [chartData, setChartData] = useState(null);
+  const [stats, setStats] = useState(null);
+  const [tree, setTree] = useState(null);
+  const [error, setError] = useState(null);
+  const [currentKw, setCurrentKw] = useState('');
+  const [runs, setRuns] = useState([]);
+  const [expandedRun, setExpandedRun] = useState(null);
+
+  useEffect(() => {
+    fetch('/api/trend-search/runs').then(r => r.json()).then(setRuns).catch(() => {});
+  }, []);
+
+  const runSearch = async () => {
+    if (!inputVal.trim() || loading) return;
+    setLoading(true); setProgress(0); setError(null); setChartData(null); setStats(null); setTree(null); setCurrentKw('');
+
+    try {
+      await fetch(`/api/trend-search/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword: inputVal, geo, timeframe })
+      }).then(r => r.json()).then(d => {
+        if (d.error) { setError(d.error); setLoading(false); }
+      });
+
+      const poll = setInterval(async () => {
+        const status = await fetch(`/api/trend-search/status`).then(r => r.json());
+        setProgress(status.pct || 0);
+        setCurrentKw(status.current_keyword || '');
+        if (status.error) { setError(status.error); setLoading(false); clearInterval(poll); }
+        if (!status.running) {
+          clearInterval(poll);
+          if (status.tree) {
+            setTree(status.tree);
+            setChartData(status.tree.labels && status.tree.values ? { labels: status.tree.labels, values: status.tree.values } : null);
+            setStats({ peak: status.tree.peak, current: status.tree.current, avg: status.tree.avg, forecast: status.tree.forecast });
+          }
+          fetch('/api/trend-search/runs').then(r => r.json()).then(setRuns).catch(() => {});
+          setLoading(false);
+          setTimeout(() => setProgress(0), 600);
+        }
+      }, 2000);
+    } catch(e) { setError(e.message); setLoading(false); }
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div className="card">
+        <div className="card-title"><span className="card-title-main">Trend Analysis</span></div>
+        <div style={{display:'flex',gap:8,marginBottom:16,flexWrap:'wrap'}}>
+          <div className="search-wrap" style={{flex:1,minWidth:200}}>
+            <svg className="search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <input className="search-input" value={inputVal} onChange={e=>setInputVal(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&runSearch()} placeholder="Введи нішу або ключове слово…"/>
+          </div>
+          <button className="btn btn-primary" style={{paddingLeft:18,paddingRight:18}} onClick={runSearch} disabled={loading}>
+            {loading ? <span className="spinner"/> : 'Аналіз'}
+          </button>
+          <div style={{display:'flex',gap:5}}>
+            {['7D','30D','90D','1Y'].map(t=>(
+              <button key={t} className="btn btn-ghost" style={{padding:'8px 10px',fontSize:11,
+                ...(timeframe===t?{borderColor:'var(--accent)',color:'var(--accent)',background:'var(--accent-dim)'}:{})}}
+                onClick={()=>setTimeframe(t)}>{t}</button>
+            ))}
+          </div>
+        </div>
+        {progress>0 && (
+          <div style={{marginBottom:12}}>
+            <div className="progress-bar"><div className="progress-fill" style={{width:`${progress}%`}}/></div>
+            {currentKw && <div style={{fontSize:11,color:'var(--text-muted)',marginTop:6}}>Обробляю: {currentKw}</div>}
+          </div>
+        )}
+        {error && <div style={{color:'var(--red)',fontSize:12,marginBottom:12}}>⚠ {error}</div>}
+        {!chartData && !loading && (
+          <div className="empty-state" style={{height:200,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center'}}>
+            <div style={{fontSize:24,marginBottom:8,opacity:0.4}}>↗</div>
+            <div>Введи ключове слово і натисни Аналіз</div>
+          </div>
+        )}
+        {loading && !chartData && (
+          <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',height:200,gap:12}}>
+            <span className="spinner"/>
+            <div style={{fontSize:12,color:'var(--text-muted)'}}>Це може зайняти кілька хвилин…</div>
+          </div>
+        )}
+        {chartData && <TrendChart chartData={chartData}/>}
+        {stats && (
+          <div style={{display:'flex',gap:12,marginTop:14,flexWrap:'wrap'}}>
+            {[{label:'Пік',val:stats.peak},{label:'Поточний',val:stats.current},{label:'Середній',val:stats.avg},{label:'Прогноз',val:stats.forecast}].map((m,i)=>(
+              <div key={i} style={{flex:1,minWidth:90,background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px'}}>
+                <div style={{fontSize:10,color:'var(--text-muted)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.5}}>{m.label}</div>
+                <div style={{fontSize:16,fontWeight:700,color:'var(--text)'}}>{m.val}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {tree && <TrendSearchAnalytics tree={tree} geo={geo} timeframe={timeframe}/>}
+
+      {runs.length > 0 && (
+        <div className="card">
+          <div className="card-title"><span className="card-title-main">Історія пошуків</span><span style={{marginLeft:'auto',fontSize:11,color:'var(--text-muted)'}}>{runs.length}</span></div>
+          <div className="history-list">
+            {runs.map(run => (
+              <TrendSearchRunCard key={run.id} run={run} expandedRun={expandedRun} setExpandedRun={setExpandedRun}/>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Trend Search Run Card ──────────────────────────────────────
+function TrendSearchRunCard({ run, expandedRun, setExpandedRun }) {
+  const [result, setResult] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const handleExpand = () => {
+    if (expandedRun === run.id) {
+      setExpandedRun(null);
+    } else {
+      setExpandedRun(run.id);
+      if (!result) {
+        setLoading(true);
+        fetch(`/api/trend-search/result?run_id=${run.id}`)
+          .then(r => r.json())
+          .then(setResult)
+          .catch(() => setResult({ error: true }))
+          .finally(() => setLoading(false));
+      }
+    }
+  };
+
+  const handleExport = (e) => {
+    e.stopPropagation();
+    window.location.href = `/api/trend-search/export?run_id=${run.id}`;
+  };
+
+  const isExpanded = expandedRun === run.id;
+
+  return (
+    <>
+      <div className="history-row" style={{cursor:'pointer'}} onClick={handleExpand}>
+        <div className="history-dot" style={{background:'var(--accent)'}}/>
+        <div className="history-info" style={{flex:1}}>
+          <div className="history-title">{run.keyword} — {run.geo}</div>
+          <div className="history-meta">
+            <span>{run.time}</span>
+            {run.duration && <span>{run.duration}</span>}
+            <span style={{color:'var(--green)'}}>{run.total_words} слів</span>
+          </div>
+        </div>
+        <div style={{display:'flex',gap:6}}>
+          <button className="icon-btn" onClick={handleExport} title="Експортувати CSV">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2v11m0 0l-4-4m4 4l4-4M2 20h20"/>
+            </svg>
+          </button>
+          <svg width="14" height="14" viewBox="0 0 24 24" style={{transform:isExpanded?'rotate(180deg)':'rotate(0deg)',transition:'transform 0.18s'}}>
+            <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+          </svg>
+        </div>
+      </div>
+      {isExpanded && (
+        <div style={{paddingLeft:20,paddingTop:12,paddingBottom:12,marginLeft:14}}>
+          {loading && <div style={{color:'var(--text-muted)',fontSize:12}}>Завантаження…</div>}
+          {result && !result.error && <TrendSearchAnalytics tree={result} geo={run.geo} timeframe={run.timeframe}/>}
+          {result && result.error && <div style={{color:'var(--red)',fontSize:12}}>Помилка завантаження</div>}
+        </div>
+      )}
+    </>
+  );
+}
+
+// ── History ────────────────────────────────────────────────────
+function RunDetail({ run }) {
+  const [niches, setNiches] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [sortCol, setSortCol] = useState('score');
+  const [sortDir, setSortDir] = useState('desc');
+
+  useEffect(()=>{
+    const q = run.id ? `?run_id=${run.id}` : `?geo=${run.geo}&run_date=${run.run_date}`;
+    fetch(`/api/niches${q}`)
+      .then(r=>r.json())
+      .then(d=>{ setNiches(d); setLoading(false); })
+      .catch(()=>setLoading(false));
+  },[]);
+
+  if (loading) return <div style={{padding:'12px 0',textAlign:'center',color:'var(--text-muted)',fontSize:12}}>Завантаження…</div>;
+  if (!niches || !niches.length) return <div style={{padding:'12px 0',textAlign:'center',color:'var(--text-muted)',fontSize:12}}>Немає даних</div>;
+
+  const trendIcon = t => t==='up'?'↑':t==='down'?'↓':'→';
+  const trendColor = t => t==='up'?'var(--green)':t==='down'?'var(--red)':'var(--text-muted)';
+  const labelColors = { relevant:'var(--green)', priority:'var(--amber)', blocked:'var(--red)', review:'var(--violet)', none:'var(--text-muted)' };
+  const labelText = { relevant:'✅', priority:'⭐', blocked:'❌', review:'🔍', none:'—' };
+  const labelOrder = { priority:0, relevant:1, review:2, none:3, blocked:4 };
+  const trendOrder = { up:0, flat:1, down:2 };
+
+  const handleSort = col => {
+    if (sortCol === col) setSortDir(d => d==='desc'?'asc':'desc');
+    else { setSortCol(col); setSortDir('desc'); }
+  };
+
+  const sorted = [...niches].sort((a,b)=>{
+    let va, vb;
+    if (sortCol==='name') { va=a.name.toLowerCase(); vb=b.name.toLowerCase(); }
+    else if (sortCol==='score') { va=a.score; vb=b.score; }
+    else if (sortCol==='vol') { va=+a.vol||0; vb=+b.vol||0; }
+    else if (sortCol==='trend') { va=trendOrder[a.trend]??1; vb=trendOrder[b.trend]??1; }
+    else if (sortCol==='label') { va=labelOrder[a.label]??3; vb=labelOrder[b.label]??3; }
+    else if (sortCol==='cat') { va=a.cat||''; vb=b.cat||''; }
+    if (va < vb) return sortDir==='asc'?-1:1;
+    if (va > vb) return sortDir==='asc'?1:-1;
+    return 0;
+  });
+
+  const SortTh = ({col, children, style={}}) => {
+    const active = sortCol===col;
+    return (
+      <th onClick={()=>handleSort(col)} style={{padding:'4px 8px',fontWeight:500,cursor:'pointer',userSelect:'none',
+        color:active?'var(--accent)':'var(--text-muted)',whiteSpace:'nowrap',...style}}>
+        {children}
+        <span style={{marginLeft:3,opacity:active?1:0.3,fontSize:9}}>
+          {active?(sortDir==='desc'?'▼':'▲'):'▼'}
+        </span>
+      </th>
+    );
+  };
+
+  return (
+    <div style={{marginTop:10,borderTop:'1px solid var(--border)',paddingTop:10}}>
+      <div style={{overflowX:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',fontSize:11}}>
+          <thead>
+            <tr style={{textAlign:'left'}}>
+              <SortTh col="name">Ключове слово</SortTh>
+              <SortTh col="score" style={{textAlign:'right'}}>Score</SortTh>
+              <SortTh col="vol" style={{textAlign:'right'}}>Avg</SortTh>
+              <SortTh col="trend" style={{textAlign:'center'}}>Тренд</SortTh>
+              <SortTh col="label" style={{textAlign:'center'}}>Мітка</SortTh>
+              <SortTh col="cat">Батьківська</SortTh>
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((n,i)=>(
+              <tr key={i} style={{borderTop:'1px solid rgba(255,255,255,0.04)'}}>
+                <td style={{padding:'5px 8px',color:'var(--text)',fontWeight:500}}>{n.name}</td>
+                <td style={{padding:'5px 8px',textAlign:'right',fontFamily:'DM Mono',color:'var(--accent)'}}>{n.score}</td>
+                <td style={{padding:'5px 8px',textAlign:'right',fontFamily:'DM Mono',color:'var(--text-dim)'}}>{n.vol}</td>
+                <td style={{padding:'5px 8px',textAlign:'center',color:trendColor(n.trend),fontWeight:600}}>{trendIcon(n.trend)}</td>
+                <td style={{padding:'5px 8px',textAlign:'center',color:labelColors[n.label]||'var(--text-muted)'}}>{labelText[n.label]||'—'}</td>
+                <td style={{padding:'5px 8px',color:'var(--text-muted)',fontSize:10}}>{n.cat!=='General'?n.cat:''}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function HistorySection({ geo }) {
+  const [runs, setRuns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState({});
+  const [editingId, setEditingId] = useState(null);
+  const [editLabel, setEditLabel] = useState('');
+
+  useEffect(()=>{
+    fetch('/api/runs').then(r=>r.json()).then(d=>{setRuns(d);setLoading(false);}).catch(()=>setLoading(false));
+  },[]);
+
+  const toggleExpand = id => setExpanded(e=>({...e,[id]:!e[id]}));
+
+  const startEdit = (run) => {
+    setEditingId(run.id);
+    setEditLabel(run.custom_label || run.label || '');
+  };
+
+  const saveRename = async (id) => {
+    await fetch(`/api/runs/${id}/rename`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({label: editLabel}),
+    });
+    const fresh = await fetch('/api/runs').then(r => r.json());
+    setRuns(fresh);
+    setEditingId(null);
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditLabel(''); };
+
+  const deleteRun = async (id) => {
+    if (!confirm('Видалити цей запис назавжди?')) return;
+    await fetch(`/api/runs/${id}`, {method: 'DELETE'});
+    setRuns(r => r.filter(x => x.id !== id));
+  };
+
+  if (loading) return <div className="center-spinner"><div className="spinner"/></div>;
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div className="card">
+        <div className="card-title" style={{marginBottom:0}}>
+          <span className="card-title-main">Історія запусків</span>
+          <div style={{marginLeft:'auto',display:'flex',gap:8,alignItems:'center'}}>
+            <span className="tag">{runs.length} запусків</span>
+            <a href={`/api/export?geo=${geo}`} className="btn btn-ghost" style={{padding:'5px 12px',fontSize:11}}>Export All</a>
+          </div>
+        </div>
+      </div>
+      {!runs.length
+        ? <div className="empty-state"><div style={{fontSize:24,opacity:0.4,marginBottom:8}}>⏱</div><div>Ще не було жодного запуску.</div></div>
+        : <div className="history-list">
+            {runs.map(run=>(
+              <div className="card" key={run.id} style={{padding:'12px 14px'}}>
+                <div style={{display:'flex',alignItems:'center',gap:10}}>
+                  <div className="history-dot" style={{
+                    background: run.status==='success'?'var(--green)':run.status==='running'?'var(--accent)':'var(--amber)',
+                    boxShadow:`0 0 6px ${run.status==='success'?'var(--green)':'var(--amber)'}`
+                  }}/>
+                  <div className="history-info" style={{flex:1}}>
+                    <div className="history-title">
+                      {editingId === run.id ? (
+                        <input
+                          value={editLabel}
+                          autoFocus
+                          onChange={e => setEditLabel(e.target.value)}
+                          onBlur={() => saveRename(run.id)}
+                          onKeyDown={e => {
+                            if (e.key === 'Enter') saveRename(run.id);
+                            if (e.key === 'Escape') cancelEdit();
+                          }}
+                          style={{
+                            background:'var(--bg2)',
+                            border:'1px solid var(--accent)',
+                            borderRadius:4,
+                            padding:'2px 8px',
+                            fontSize:13,
+                            color:'var(--text)',
+                            minWidth:240,
+                            outline:'none',
+                          }}
+                        />
+                      ) : (
+                        <span
+                          onDoubleClick={() => startEdit(run)}
+                          title="Подвійний клік для перейменування"
+                          style={{cursor:'text'}}
+                        >{run.label}</span>
+                      )}
+                      {(run.tags||[]).map(t=><span key={t} className="tag" style={{fontSize:9,padding:'1px 6px'}}>{t}</span>)}
+                    </div>
+                    <div className="history-meta">
+                      <span>🕐 {run.time}</span>
+                      {run.duration && <span>⏱ {run.duration}</span>}
+                      <span style={{color:run.status==='success'?'var(--green)':'var(--amber)'}}>
+                        {run.status==='success'?'✓ Done':run.status==='running'?'⟳ Running':'⚠ '+run.status}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{textAlign:'right',marginRight:8}}>
+                    <div className="history-stat-val">{(run.niches||0).toLocaleString()}</div>
+                    <div className="history-stat-label">Ніш</div>
+                  </div>
+                  <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                    <button className="icon-btn" title="Перейменувати" onClick={() => startEdit(run)}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M2 14l3-1 8-8-2-2-8 8-1 3z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg>
+                    </button>
+                    <button className="icon-btn" title={expanded[run.id]?'Згорнути':'Розкрити'} onClick={()=>toggleExpand(run.id)}
+                      style={{color:expanded[run.id]?'var(--accent)':'var(--text-muted)'}}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                        <path d={expanded[run.id]?'M4 10l4-4 4 4':'M4 6l4 4 4-4'} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    </button>
+                    <a href={`/api/export?geo=${run.geo}&run_date=${run.run_date}`} className="icon-btn" title="Export CSV">
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v8M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="2" y="11" width="12" height="3" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>
+                    </a>
+                    <a href={`/api/report?geo=${run.geo}&run_date=${run.run_date}`} className="icon-btn" title="MD Звіт">
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="10" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                    </a>
+                    <div className="icon-btn" title="Видалити" onClick={() => deleteRun(run.id)}>
+                      <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/></svg>
+                    </div>
+                  </div>
+                </div>
+                {expanded[run.id] && <RunDetail run={run}/>}
+              </div>
+            ))}
+          </div>
+      }
+    </div>
+  );
+}
+
+// ── Pinterest History ──────────────────────────────────────────
+function PinterestHistory() {
+  const [runs, setRuns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState({});
+  const [runDetails, setRunDetails] = useState({});
+
+  useEffect(() => {
+    fetch('/api/pinterest/runs').then(r => r.json()).then(d => { setRuns(d); setLoading(false); }).catch(() => setLoading(false));
+  }, []);
+
+  const toggleExpand = async (runDate) => {
+    setExpanded(e => ({ ...e, [runDate]: !e[runDate] }));
+    if (!e[runDate] && !runDetails[runDate]) {
+      try {
+        const res = await fetch(`/api/pinterest/niches?run_date=${runDate}`);
+        const data = await res.json();
+        setRunDetails(prev => ({ ...prev, [runDate]: data }));
+      } catch (e) {
+        console.error('Error loading details:', e);
+      }
+    }
+  };
+
+  if (loading) return <div className="center-spinner"><div className="spinner" /></div>;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      {!runs.length
+        ? <div className="empty-state"><div style={{ fontSize: 28, opacity: 0.4, marginBottom: 8 }}>📌</div><div>Немає запусків. Запусти Pinterest Crawl щоб почати.</div></div>
+        : runs.map(run => (
+            <div key={run.id} className="card">
+              <div style={{ padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => toggleExpand(run.run_date)}>
+                <div style={{ width: 10, height: 10, borderRadius: '50%', background: run.status === 'done' ? 'var(--green)' : run.status === 'running' ? 'var(--amber)' : 'var(--red)' }} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600 }}>{run.category || 'Custom'}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                    {new Date(run.start_time).toLocaleDateString('uk-UA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+                <div style={{ textAlign: 'right', marginRight: 8 }}>
+                  <div style={{ fontWeight: 700 }}>{run.niches_found || 0}</div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>ключів</div>
+                </div>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" style={{ transform: expanded[run.run_date] ? 'rotate(180deg)' : '' }}>
+                  <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+
+              {expanded[run.run_date] && runDetails[run.run_date] && (
+                <div style={{ borderTop: '1px solid var(--border)', padding: '12px 14px' }}>
+                  <table style={{ width: '100%', fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '1px solid var(--border)' }}>
+                        <th style={{ textAlign: 'left', padding: '4px 0', fontSize: 10, color: 'var(--text-muted)' }}>Ключове слово</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0', fontSize: 10, color: 'var(--text-muted)' }}>Score</th>
+                        <th style={{ textAlign: 'right', padding: '4px 0', fontSize: 10, color: 'var(--text-muted)' }}>Volume</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {runDetails[run.run_date].slice(0, 15).map((n, i) => (
+                        <tr key={i} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                          <td style={{ padding: '6px 0' }}>{n.keyword}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--accent)', fontFamily: 'monospace' }}>{n.score}</td>
+                          <td style={{ textAlign: 'right', color: 'var(--text-muted)', fontFamily: 'monospace' }}>{(n.pin_volume / 1000).toFixed(0)}K</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  {runDetails[run.run_date].length > 15 && (
+                    <div style={{ fontSize: 10, color: 'var(--text-muted)', marginTop: 8 }}>
+                      + ще {runDetails[run.run_date].length - 15} ключів...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ))
+      }
+    </div>
+  );
+}
+
+// ── Pinterest Search ──────────────────────────────────────────────
+function PinterestSearchSection() {
+  const [inputVal, setInputVal] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [data, setData] = useState(null);
+  const [error, setError] = useState(null);
+
+  const runSearch = async () => {
+    if (!inputVal.trim() || loading) return;
+    setLoading(true);
+    setProgress(0);
+    setError(null);
+    setData(null);
+
+    let p = 0;
+    const iv = setInterval(() => { p = Math.min(88, p + Math.random() * 12); setProgress(p); }, 300);
+
+    try {
+      const res = await fetch(`/api/pinterest/search?keyword=${encodeURIComponent(inputVal)}`);
+      const d = await res.json();
+      clearInterval(iv);
+      setProgress(100);
+
+      if (d.error) {
+        setError(d.error);
+      } else {
+        setData(d);
+      }
+    } catch (e) {
+      clearInterval(iv);
+      setError(e.message);
+    }
+
+    setLoading(false);
+    setTimeout(() => setProgress(0), 600);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+      <div className="card">
+        <div className="card-title"><span className="card-title-main">Пошук Pinterest</span></div>
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <div className="search-wrap" style={{ flex: 1, minWidth: 200 }}>
+            <svg className="search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5" />
+              <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            <input className="search-input" value={inputVal} onChange={e => setInputVal(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && runSearch()} placeholder="Введи ключове слово…" />
+          </div>
+          <button className="btn btn-primary" style={{ paddingLeft: 18, paddingRight: 18 }} onClick={runSearch} disabled={loading}>
+            {loading ? <span className="spinner" /> : '🔍 Пошук'}
+          </button>
+        </div>
+
+        {progress > 0 && <div className="progress-bar" style={{ marginBottom: 12 }}><div className="progress-fill" style={{ width: `${progress}%` }} /></div>}
+        {error && <div style={{ color: 'var(--red)', fontSize: 12, marginBottom: 12 }}>⚠ {error}</div>}
+
+        {!data && !loading && (
+          <div className="empty-state" style={{ height: 200, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ fontSize: 24, marginBottom: 8, opacity: 0.4 }}>📌</div>
+            <div>Введи ключове слово і натисни Пошук</div>
+          </div>
+        )}
+
+        {data && (
+          <div>
+            <div style={{ display: 'flex', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+              <div style={{ flex: 1, minWidth: 120, background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px' }}>
+                <div style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase' }}>Обсяг (піни/міс)</div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--pinterest)' }}>{data.volume ? (data.volume / 1000).toFixed(1) + 'K' : '—'}</div>
+              </div>
+            </div>
+
+            {data.suggestions && data.suggestions.length > 0 && (
+              <div className="card" style={{ marginTop: 12 }}>
+                <div className="card-title" style={{ marginBottom: 12 }}><span className="card-title-main">Пов'язані запити</span><span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--text-muted)' }}>{data.suggestions.length}</span></div>
+                <div className="kw-list">
+                  {data.suggestions.map((kw, i) => (
+                    <div className="kw-item" key={i}>
+                      <span className="kw-item-term">{kw.term}</span>
+                      <span className="kw-item-vol">{kw.vol ? (kw.vol / 1000).toFixed(0) + 'K' : '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ── Pinterest Overview ──────────────────────────────────────────
+function PinterestOverview({ niches, loading }) {
+  const [sortBy, setSortBy] = useState('score');
+  const [sortDir, setSortDir] = useState('desc');
+  const [minScore, setMinScore] = useState(0);
+  const [minVolume, setMinVolume] = useState(0);
+  const [labels, setLabels] = useState({});
+  const runDate = new Date().toISOString().split('T')[0];
+
+  const handleLabelChange = async (keyword, label) => {
+    setLabels(prev => ({ ...prev, [keyword]: label }));
+    try {
+      await fetch('/api/label', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ keyword, label })
+      });
+    } catch (e) {
+      console.error('Error setting label:', e);
+    }
+  };
+
+  const filtered = niches.filter(n =>
+    (n.score ?? 0) >= minScore && (n.pin_volume ?? 0) >= minVolume
+  );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let aVal = a[sortBy] ?? 0;
+    let bVal = b[sortBy] ?? 0;
+    const cmp = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortDir('desc');
+    }
+  };
+
+  const handleExportCSV = async () => {
+    const url = `/api/pinterest/export?run_date=${runDate}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pinterest_${runDate}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
+  const handleReportForClaude = async () => {
+    try {
+      const res = await fetch(`/api/pinterest/report?run_date=${runDate}`);
+      const data = await res.json();
+      if (data.report) {
+        const text = data.report;
+        if (navigator.clipboard) {
+          await navigator.clipboard.writeText(text);
+          alert('✅ Звіт скопійовано в буфер обміну');
+        } else {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          document.body.appendChild(textarea);
+          textarea.select();
+          document.execCommand('copy');
+          document.body.removeChild(textarea);
+          alert('✅ Звіт скопійовано в буфер обміну');
+        }
+      }
+    } catch (e) {
+      alert('❌ Помилка: ' + e.message);
+    }
+  };
+
+  if (loading) return <div className="center-spinner"><div className="spinner"/></div>;
+
+  return (
+    <div>
+      {niches.length > 0 && (
+        <div style={{ marginBottom: 16, display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>Мін. Score</label>
+            <input type="range" min="0" max="100" value={minScore} onChange={e => setMinScore(Number(e.target.value))}
+              style={{ width: 120, cursor: 'pointer' }} />
+            <div style={{ fontSize: 12, fontWeight: 600 }}>{minScore}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-muted)' }}>Мін. Volume</label>
+            <input type="range" min="0" max="100000" step="1000" value={minVolume} onChange={e => setMinVolume(Number(e.target.value))}
+              style={{ width: 120, cursor: 'pointer' }} />
+            <div style={{ fontSize: 12, fontWeight: 600 }}>{(minVolume / 1000).toFixed(0)}K</div>
+          </div>
+          <button className="btn btn-ghost" onClick={handleReportForClaude} style={{ fontSize: 12 }}>
+            📋 Звіт для Claude
+          </button>
+          <button className="btn btn-ghost" onClick={handleExportCSV} style={{ fontSize: 12 }}>
+            📥 Export CSV
+          </button>
+        </div>
+      )}
+      <div className="metrics-grid">
+        <div className="metric">
+          <div className="metric-label">Усього ключів</div>
+          <div className="metric-value">{niches.length}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Макс. Volume</div>
+          <div className="metric-value">{niches.length ? Math.round(Math.max(...niches.map(n => n.pin_volume || 0))) : 0}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Середня Volume</div>
+          <div className="metric-value">{niches.length ? Math.round(niches.reduce((s, n) => s + (n.pin_volume || 0), 0) / niches.length) : 0}</div>
+        </div>
+        <div className="metric">
+          <div className="metric-label">Макс. Score</div>
+          <div className="metric-value">{niches.length ? Math.round(Math.max(...niches.map(n => n.score || 0))) : 0}</div>
+        </div>
+      </div>
+
+      <table className="niches-table">
+        <thead>
+          <tr>
+            <th style={{width:'40px'}}>#</th>
+            <th style={{width:'45%', cursor:'pointer'}} onClick={() => handleSort('keyword')}>Ключове слово {sortBy === 'keyword' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+            <th style={{cursor:'pointer', width:'80px'}} onClick={() => handleSort('score')}>Оцінка {sortBy === 'score' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+            <th style={{cursor:'pointer', width:'80px'}} onClick={() => handleSort('pin_volume')}>Обсяг {sortBy === 'pin_volume' && (sortDir === 'asc' ? '↑' : '↓')}</th>
+            <th style={{width:'60px'}}>Спарк</th>
+            <th style={{width:'100px'}}>Мітка</th>
+          </tr>
+        </thead>
+        <tbody>
+          {sorted.map((niche, i) => {
+            const rng = new (function() {
+              let x = Math.sin(niche.keyword.charCodeAt(0) + i) * 10000;
+              this.next = function() { x = (x - Math.floor(x)) * 10000; return x / 10000; };
+            })();
+            const sparkValues = Array(8).fill(0).map(() => Math.max(1, Math.round(niche.pin_volume * (0.5 + rng.next()))));
+
+            return (
+              <tr key={i}>
+                <td style={{opacity:0.7, fontSize:'13px'}}>{i + 1}</td>
+                <td style={{fontWeight:'500'}}>{niche.keyword}</td>
+                <td style={{textAlign:'center', fontSize:'13px'}}><span style={{background:'oklch(0.62 0.22 10 / 0.2)', padding:'2px 8px', borderRadius:'3px', fontWeight:'600'}}>{niche.score || 0}</span></td>
+                <td style={{textAlign:'right', fontSize:'13px'}}>{niche.pin_volume ? (niche.pin_volume / 1000).toFixed(0) + 'K' : '—'}</td>
+                <td style={{textAlign:'center', fontSize:'11px'}}><Spark values={sparkValues} /></td>
+                <td>
+                  <select value={labels[niche.keyword] || 'none'} onChange={e => handleLabelChange(niche.keyword, e.target.value)}
+                    style={{fontSize:'11px', padding:'4px 6px', borderRadius:'3px', border:'1px solid var(--border)', background:'var(--bg-secondary)', color:'var(--text)', width:'100%'}}>
+                    <option value="none">—</option>
+                    <option value="✅ Цікаво">✅ Цікаво</option>
+                    <option value="⭐ Пріоритет">⭐ Пріоритет</option>
+                    <option value="🔍 Перевірити">🔍 Перевірити</option>
+                    <option value="❌ Не релевантно">❌ Не релевантно</option>
+                  </select>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {niches.length === 0 && <div style={{textAlign:'center', padding:'40px', opacity:0.5}}>Результатів не знайдено. Запусти Pinterest Crawl.</div>}
+    </div>
+  );
+}
+
+// ── App ────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState('overview');
+  const [source, setSource] = useState('google');
+  const [niches, setNiches] = useState([]);
+  const [pinterestCategory, setPinterestCategory] = useState('');
+  const [pinterestCategories, setPinterestCategories] = useState([]);
+  const [pinterestMaxKw, setPinterestMaxKw] = useState(200);
+  const [pCrawling, setPCrawling] = useState(false);
+  const [pCrawlPct, setPCrawlPct] = useState(0);
+  const [pCrawlKw, setPCrawlKw] = useState('');
+  const [pNiches, setPNiches] = useState([]);
+  const [pRuns, setPRuns] = useState([]);
+  const pPollRef = useRef(null);
+  const [runDates, setRunDates] = useState([]);
+  const [selectedRun, setSelectedRun] = useState('');
+  const [categories, setCategories] = useState([]);
+  const [enabled, setEnabled] = useState([]);
+  const [allPaths, setAllPaths] = useState([]);
+  const [region, setRegion] = useState('US');
+  const [timeframe, setTimeframe] = useState('90D');
+  const [keyword, setKeyword] = useState('');
+  const [unlimited, setUnlimited] = useState(true);
+  const [maxNiches, setMaxNiches] = useState(500);
+  const [minScore, setMinScore] = useState(0);
+  const [minInterest, setMinInterest] = useState(5);
+  const [crawling, setCrawling] = useState(false);
+  const [crawlPct, setCrawlPct] = useState(0);
+  const [crawlKw, setCrawlKw] = useState('');
+  const [crawlSeed, setCrawlSeed] = useState('');
+  const [crawlRunId, setCrawlRunId] = useState(null);
+  const [liveItems, setLiveItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const pollRef = useRef(null);
+
+  const loadNiches = useCallback((geo, runDate='') => {
+    setLoading(true);
+    const q = runDate ? `?geo=${geo}&run_date=${runDate}` : `?geo=${geo}`;
+    fetch('/api/niches'+q).then(r=>r.json()).then(d=>{setNiches(d);setLoading(false);}).catch(()=>setLoading(false));
+  }, []);
+
+  const loadRunDates = useCallback((geo) => {
+    fetch(`/api/run_dates?geo=${geo}`).then(r=>r.json()).then(d=>{
+      setRunDates(d);
+      if (d.length && !selectedRun) setSelectedRun(d[0]);
+    }).catch(()=>{});
+  }, []);
+
+  const loadCategories = useCallback(() => {
+    fetch('/api/categories').then(r=>r.json()).then(d=>{
+      setCategories(d.categories||[]);
+      setEnabled(d.enabled||[]);
+      // Collect all paths
+      const all = [];
+      (d.categories||[]).forEach(cat => {
+        all.push(cat.path);
+        (cat.children||[]).forEach(ch => {
+          all.push(ch.path);
+          (ch.children||[]).forEach(gc => all.push(gc.path));
+        });
+      });
+      setAllPaths(all);
+    }).catch(()=>{});
+  }, []);
+
+  useEffect(()=>{ loadNiches(region); loadRunDates(region); }, [region]);
+  useEffect(()=>{ loadCategories(); }, []);
+
+  const handleRunChange = (date) => {
+    setSelectedRun(date);
+    loadNiches(region, date);
+  };
+
+  const saveEnabled = (next) => {
+    fetch('/api/categories',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({enabled:next})});
+  };
+
+  const toggleCat = (path) => {
+    setEnabled(prev => {
+      const next = prev.includes(path) ? prev.filter(p=>p!==path) : [...prev, path];
+      saveEnabled(next);
+      return next;
+    });
+  };
+
+  const selectAll = () => {
+    setEnabled(allPaths);
+    saveEnabled(allPaths);
+  };
+
+  const selectNone = () => {
+    setEnabled([]);
+    saveEnabled([]);
+  };
+
+  const resetDefaults = async () => {
+    const d = await fetch('/api/categories/defaults',{method:'POST'}).then(r=>r.json());
+    if (d.enabled) setEnabled(d.enabled);
+  };
+
+  const startCrawl = async () => {
+    if (crawling) return;
+    const res = await fetch('/api/crawl',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({geo:region, timeframe, max_niches: unlimited ? 999999 : maxNiches, keyword: crawlSeed, min_interest: minInterest}),
+    });
+    if (!res.ok) return;
+    setCrawling(true); setCrawlPct(0); setLiveItems([]); setCrawlRunId(null);
+    pollRef.current = setInterval(async ()=>{
+      try {
+        const s = await fetch('/api/crawl/status').then(r=>r.json());
+        setCrawlPct(s.pct||0); setCrawlKw(s.current_keyword||'');
+        if (s.run_id) {
+          setCrawlRunId(s.run_id);
+          try {
+            const items = await fetch(`/api/crawl/live?run_id=${s.run_id}`).then(r=>r.json());
+            setLiveItems(items);
+          } catch {}
+        }
+        if (!s.running) { clearInterval(pollRef.current); setCrawling(false); loadNiches(region); loadRunDates(region); }
+      } catch { clearInterval(pollRef.current); setCrawling(false); }
+    }, 1500);
+  };
+
+  useEffect(() => {
+    const loadPinterestCategories = async () => {
+      try {
+        const res = await fetch('/api/pinterest/categories');
+        const data = await res.json();
+        setPinterestCategories(data.categories || []);
+      } catch (e) {
+        console.error('Error loading Pinterest categories:', e);
+      }
+    };
+    loadPinterestCategories();
+  }, []);
+
+  useEffect(() => {
+    if (tab === 'p-overview' && source === 'pinterest') {
+      const loadPinterestNiches = async () => {
+        try {
+          const res = await fetch('/api/pinterest/niches');
+          const data = await res.json();
+          setPNiches(data.map(n => ({
+            keyword: n.keyword,
+            level: n.level,
+            parent: n.parent,
+            pin_volume: n.pin_volume,
+            score: n.score,
+            label: n.label
+          })) || []);
+        } catch (e) {
+          console.error('Error loading Pinterest niches:', e);
+        }
+      };
+      loadPinterestNiches();
+    }
+  }, [tab, source]);
+
+  useEffect(()=>()=>{ if(pollRef.current) clearInterval(pollRef.current); },[]);
+
+  const handleSourceSwitch = (s) => {
+    setSource(s);
+    setTab(s === 'google' ? 'overview' : 'p-overview');
+  };
+
+  const startPinterestCrawl = async () => {
+    if (pCrawling || !pinterestCategory.trim()) return;
+    const res = await fetch('/api/pinterest/crawl', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category: pinterestCategory, max_keywords: pinterestMaxKw }),
+    });
+    if (!res.ok) return;
+    setPCrawling(true); setPCrawlPct(0);
+    pPollRef.current = setInterval(async () => {
+      try {
+        const s = await fetch('/api/pinterest/crawl/status').then(r => r.json());
+        setPCrawlPct(s.pct || 0); setPCrawlKw(s.current_keyword || '');
+        if (!s.running) {
+          clearInterval(pPollRef.current);
+          setPCrawling(false);
+          fetch('/api/pinterest/niches').then(r => r.json()).then(setPNiches);
+          fetch('/api/pinterest/runs').then(r => r.json()).then(setPRuns);
+        }
+      } catch { clearInterval(pPollRef.current); setPCrawling(false); }
+    }, 800);
+  };
+
+  useEffect(() => {
+    if (pPollRef.current) return () => clearInterval(pPollRef.current);
+  }, []);
+
+  const filteredNiches = niches.filter(n =>
+    (!keyword || n.name.toLowerCase().includes(keyword.toLowerCase()))
+  );
+
+  return (
+    <div className="app">
+      <aside className="sidebar">
+        <div className="sidebar-header">
+          <div className="logo">
+            <div className="logo-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 12L6 7l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="4" r="2" fill="white" fillOpacity="0.9"/>
+              </svg>
+            </div>
+            <span className="logo-text">Trends Analyzer</span>
+            <span className="logo-badge">PRO</span>
+          </div>
+        </div>
+
+        <div className="sidebar-body">
+          {/* Source Toggle */}
+          <div>
+            <div className="sec-label">Джерело</div>
+            <div className="source-toggle">
+              <button className={`source-btn ${source==='google'?'active-google':''}`} onClick={()=>handleSourceSwitch('google')}>Google Trends</button>
+              <button className={`source-btn ${source==='pinterest'?'active-pinterest':''}`} onClick={()=>handleSourceSwitch('pinterest')}>Pinterest</button>
+            </div>
+          </div>
+
+          {source === 'google' && (
+          <>
+          {/* Market */}
+          <div>
+            <div className="sec-label">Ринок</div>
+            <div className="select-row">
+              <select className="sel" value={region} onChange={e=>setRegion(e.target.value)}>
+                {['US','GB','CA','AU','NZ','IE','FR','AT','BE','IT','ES'].map(r=><option key={r} value={r}>{r}</option>)}
+              </select>
+              <select className="sel" value={timeframe} onChange={e=>setTimeframe(e.target.value)}>
+                <option value="7D">7 Днів</option>
+                <option value="30D">30 Днів</option>
+                <option value="90D">90 Днів</option>
+                <option value="1Y">1 Рік</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Limits */}
+          <div>
+            <div className="sec-label">Ліміт запитів</div>
+            <label className="check-row" style={{marginBottom:6}}>
+              <input type="checkbox" checked={unlimited} onChange={e=>setUnlimited(e.target.checked)}/>
+              <span>Без ліміту</span>
+            </label>
+            {!unlimited && (
+              <input type="number" className="num-input" value={maxNiches} min={10} max={100000} step={100}
+                onChange={e=>setMaxNiches(Number(e.target.value))}/>
+            )}
+          </div>
+
+          {/* Keyword filter */}
+          <div>
+            <div className="sec-label">Фільтр</div>
+            <div className="search-wrap">
+              <svg className="search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <input className="search-input" placeholder="Фільтр ніш…" value={keyword} onChange={e=>setKeyword(e.target.value)}/>
+            </div>
+          </div>
+
+          {/* Min score */}
+          <div>
+            <div className="sec-label">Мін. оцінка (фільтр)</div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <input type="range" min={0} max={100} step={5} value={minScore} onChange={e=>setMinScore(+e.target.value)} style={{flex:1,height:4,appearance:'none',background:'rgba(255,255,255,0.1)',borderRadius:2,outline:'none',cursor:'pointer'}}/>
+              <span style={{fontSize:11,fontFamily:'DM Mono',color:'var(--accent)',minWidth:28,textAlign:'right'}}>{minScore}</span>
+            </div>
+          </div>
+
+          {/* Min interest for crawl */}
+          <div>
+            <div className="sec-label">Мін. інтерес (краулер)</div>
+            <div style={{display:'flex',alignItems:'center',gap:8}}>
+              <input type="range" min={1} max={50} step={1} value={minInterest} onChange={e=>setMinInterest(+e.target.value)} style={{flex:1,height:4,appearance:'none',background:'rgba(255,255,255,0.1)',borderRadius:2,outline:'none',cursor:'pointer'}}/>
+              <span style={{fontSize:11,fontFamily:'DM Mono',color:'var(--accent)',minWidth:28,textAlign:'right'}}>{minInterest}</span>
+            </div>
+            <div style={{fontSize:10,color:'var(--text-muted)',marginTop:3}}>avg interest ≥ {minInterest} щоб слово зберіглось</div>
+          </div>
+
+          {/* Categories */}
+          <div style={{flex:1,minHeight:0,display:'flex',flexDirection:'column'}}>
+            <div className="sec-label">Категорії</div>
+            <div style={{flex:1,overflowY:'auto',paddingRight:2}}>
+              <CategoryTree categories={categories} enabled={enabled} onToggle={toggleCat}
+                onSelectAll={selectAll} onSelectNone={selectNone} onDefaults={resetDefaults}/>
+            </div>
+          </div>
+
+          {/* Custom keyword */}
+          <div>
+            <div className="sec-label">Конкретне слово</div>
+            <div className="search-wrap">
+              <svg className="search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <input className="search-input" placeholder="напр. yoga mat…" value={crawlSeed}
+                onChange={e=>setCrawlSeed(e.target.value)}/>
+            </div>
+            {crawlSeed && <div style={{fontSize:10,color:'var(--text-muted)',marginTop:4}}>Категорії ігноруються</div>}
+          </div>
+
+          {/* Actions */}
+          <div className="btn-actions">
+            {crawling && (
+              <div className="crawl-status">
+                <div className="crawl-dot"/>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',justifyContent:'space-between'}}>
+                    <span>Краулер…</span><span>{Math.round(crawlPct)}%</span>
+                  </div>
+                  {crawlKw && <div style={{fontSize:10,opacity:0.7,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginTop:1}}>{crawlKw}</div>}
+                  <div className="progress-bar" style={{marginTop:4}}><div className="progress-fill" style={{width:`${crawlPct}%`}}/></div>
+                </div>
+              </div>
+            )}
+            <button className="btn btn-primary" onClick={startCrawl} disabled={crawling}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="white" strokeWidth="1.5"/><path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="white"/></svg>
+              {crawling ? 'Виконується…' : 'Запустити'}
+            </button>
+            <a href={`/api/report?geo=${region}`} className="btn btn-ghost">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><rect x="2" y="1" width="10" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.4"/><path d="M5 5h6M5 8h6M5 11h4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+              Звіт для Claude
+            </a>
+            <a href={`/api/export?geo=${region}`} className="btn btn-ghost">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M8 3v8M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><rect x="2" y="11" width="12" height="3" rx="1" stroke="currentColor" strokeWidth="1.3"/></svg>
+              Export CSV
+            </a>
+          </div>
+          </>
+          )}
+
+          {source === 'pinterest' && (
+          <>
+          {/* Pinterest Categories */}
+          <div>
+            <div className="sec-label">Категорія</div>
+            <select value={pinterestCategory} onChange={e => setPinterestCategory(e.target.value)} className="search-input" style={{padding:'8px 12px', fontSize:'14px'}}>
+              <option value="">-- Вибери категорію --</option>
+              {pinterestCategories.map(cat => (
+                <option key={cat.id} value={cat.name}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Pinterest Max Keywords */}
+          <div>
+            <div className="sec-label">Макс. ключові слова</div>
+            <input type="number" className="num-input" value={pinterestMaxKw} min={10} max={500} step={10} onChange={e => setPinterestMaxKw(Number(e.target.value))} />
+          </div>
+
+          {/* Pinterest Actions */}
+          <div className="btn-actions">
+            {pCrawling && (
+              <div className="crawl-status" style={{ borderColor: 'oklch(0.62 0.22 10 / 0.25)', background: 'oklch(0.62 0.22 10 / 0.1)' }}>
+                <div className="crawl-dot" style={{ background: 'var(--pinterest)' }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>Pinterest…</span><span>{Math.round(pCrawlPct)}%</span>
+                  </div>
+                  {pCrawlKw && <div style={{ fontSize: 10, opacity: 0.7, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: 1 }}>{pCrawlKw}</div>}
+                  <div className="progress-bar" style={{ marginTop: 4 }}>
+                    <div className="progress-fill" style={{ width: `${pCrawlPct}%`, background: 'linear-gradient(90deg, var(--pinterest), oklch(0.7 0.2 30))' }} />
+                  </div>
+                </div>
+              </div>
+            )}
+            <button className="btn btn-primary" style={{ background: 'linear-gradient(135deg, var(--pinterest), oklch(0.7 0.2 30))' }} onClick={startPinterestCrawl} disabled={pCrawling || !pinterestCategory.trim()}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6.5" stroke="white" strokeWidth="1.5"/><path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="white"/></svg>
+              {pCrawling ? 'Виконується…' : 'Pinterest Crawl'}
+            </button>
+          </div>
+          </>
+          )}
+        </div>
+      </aside>
+
+      <div className="main">
+        <div className="topbar">
+          <div className="topbar-tabs">
+            {source === 'google' && [
+              {id:'overview',label:'Огляд'},
+              {id:'search',label:'Пошук тренду'},
+              {id:'history',label:'Історія'}
+            ].map(t=>(
+              <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+                <div className="tab-dot"/>{t.label}
+              </div>
+            ))}
+            {source === 'pinterest' && [
+              {id:'p-overview',label:'Pinterest Огляд'},
+              {id:'p-search',label:'Pinterest Пошук'},
+              {id:'p-history',label:'Pinterest Історія'}
+            ].map(t=>(
+              <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+                <div className="tab-dot" style={{background:'var(--pinterest)'}}/>{t.label}
+              </div>
+            ))}
+          </div>
+          <div className="topbar-right">
+            {source === 'google' && (
+              <>
+                <span className="topbar-pill">Регіон: {region}</span>
+                <span className="topbar-pill">{niches.length} ніш</span>
+              </>
+            )}
+            {source === 'pinterest' && (
+              <span className="topbar-pill" style={{color:'var(--pinterest)'}}>📌 {pNiches.length} ключів</span>
+            )}
+            <div className="avatar">TA</div>
+          </div>
+        </div>
+
+        <div className="content">
+          {source === 'google' && (
+            <>
+              {tab==='overview' && (
+                loading
+                  ? <div className="center-spinner"><div className="spinner"/></div>
+                  : <OverviewSection niches={filteredNiches} setNiches={setNiches} minScore={minScore}
+                      geo={region} runDates={runDates} selectedRun={selectedRun} onRunChange={handleRunChange}
+                      crawling={crawling} liveItems={liveItems} crawlKw={crawlKw}/>
+              )}
+              {tab==='search' && <SearchSection geo={region}/>}
+              {tab==='history' && <HistorySection geo={region}/>}
+            </>
+          )}
+          {source === 'pinterest' && (
+            <>
+              {tab==='p-overview' && <PinterestOverview niches={pNiches} loading={false} />}
+              {tab==='p-search' && <PinterestSearchSection />}
+              {tab==='p-history' && <PinterestHistory />}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script>
+</body>
+</html>

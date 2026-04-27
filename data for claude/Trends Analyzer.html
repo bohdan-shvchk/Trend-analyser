@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Trends Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #070c14;
+    --bg2: #0c1220;
+    --bg3: #111827;
+    --glass: rgba(255,255,255,0.04);
+    --glass-hover: rgba(255,255,255,0.07);
+    --border: rgba(255,255,255,0.08);
+    --border-bright: rgba(255,255,255,0.15);
+    --accent: oklch(0.62 0.2 245);
+    --accent-dim: oklch(0.62 0.2 245 / 0.15);
+    --accent-glow: oklch(0.62 0.2 245 / 0.3);
+    --violet: oklch(0.62 0.2 285);
+    --violet-dim: oklch(0.62 0.2 285 / 0.15);
+    --green: oklch(0.65 0.16 155);
+    --green-dim: oklch(0.65 0.16 155 / 0.15);
+    --amber: oklch(0.72 0.16 75);
+    --amber-dim: oklch(0.72 0.16 75 / 0.15);
+    --red: oklch(0.62 0.2 25);
+    --red-dim: oklch(0.62 0.2 25 / 0.15);
+    --text: #e2e8f0;
+    --text-muted: #64748b;
+    --text-dim: #94a3b8;
+    --sidebar-w: 270px;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+  html, body, #root { height: 100%; background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 13px; line-height: 1.5; overflow: hidden; }
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 2px; }
+
+  /* Glassmorphism base */
+  .glass { background: var(--glass); border: 1px solid var(--border); backdrop-filter: blur(16px); }
+  .glass-bright { background: rgba(255,255,255,0.06); border: 1px solid var(--border-bright); backdrop-filter: blur(20px); }
+
+  /* Layout */
+  .app { display: flex; height: 100vh; overflow: hidden; }
+  .sidebar { width: var(--sidebar-w); min-width: var(--sidebar-w); height: 100vh; display: flex; flex-direction: column; border-right: 1px solid var(--border); background: linear-gradient(180deg, #0b1220 0%, #070c14 100%); overflow: hidden; }
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Sidebar */
+  .sidebar-header { padding: 20px 18px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .logo { display: flex; align-items: center; gap: 9px; margin-bottom: 0; }
+  .logo-icon { width: 28px; height: 28px; background: linear-gradient(135deg, var(--accent), var(--violet)); border-radius: 7px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+  .logo-text { font-size: 14px; font-weight: 700; letter-spacing: -0.3px; }
+  .logo-badge { font-size: 9px; font-weight: 600; letter-spacing: 0.5px; color: var(--accent); background: var(--accent-dim); border: 1px solid var(--accent-glow); padding: 1px 6px; border-radius: 20px; margin-left: auto; }
+
+  .sidebar-body { flex: 1; overflow-y: auto; padding: 14px 14px; display: flex; flex-direction: column; gap: 18px; }
+  .sidebar-section-label { font-size: 10px; font-weight: 600; letter-spacing: 1px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 8px; }
+
+  .select-row { display: flex; gap: 7px; }
+  .sel { flex: 1; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text-dim); font-family: inherit; font-size: 12px; padding: 7px 10px; appearance: none; cursor: pointer; transition: border-color 0.15s; outline: none; }
+  .sel:focus, .sel:hover { border-color: var(--border-bright); color: var(--text); }
+  .sel option { background: #111827; }
+
+  .search-wrap { position: relative; }
+  .search-icon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+  .search-input { width: 100%; background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-family: inherit; font-size: 12px; padding: 8px 10px 8px 32px; outline: none; transition: border-color 0.15s, box-shadow 0.15s; }
+  .search-input::placeholder { color: var(--text-muted); }
+  .search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+
+  /* Category tree */
+  .cat-tree { display: flex; flex-direction: column; gap: 3px; }
+  .cat-parent { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; user-select: none; transition: background 0.12s; }
+  .cat-parent:hover { background: var(--glass-hover); }
+  .cat-chevron { color: var(--text-muted); transition: transform 0.18s; flex-shrink: 0; }
+  .cat-chevron.open { transform: rotate(90deg); }
+  .cat-label { font-size: 12px; font-weight: 500; color: var(--text-dim); flex: 1; }
+  .cat-count { font-size: 10px; font-weight: 600; color: var(--text-muted); background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 10px; }
+  .cat-checkbox { width: 14px; height: 14px; border: 1.5px solid var(--border-bright); border-radius: 3px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.12s; cursor: pointer; }
+  .cat-checkbox.checked { background: var(--accent); border-color: var(--accent); }
+  .cat-children { padding-left: 18px; display: flex; flex-direction: column; gap: 2px; overflow: hidden; }
+  .cat-child { display: flex; align-items: center; gap: 7px; padding: 5px 8px; border-radius: var(--radius-sm); cursor: pointer; transition: background 0.12s; }
+  .cat-child:hover { background: var(--glass-hover); }
+  .cat-child-label { font-size: 11.5px; color: var(--text-dim); flex: 1; }
+
+  /* Action buttons */
+  .btn { display: flex; align-items: center; justify-content: center; gap: 7px; padding: 9px 14px; border-radius: var(--radius-sm); font-family: inherit; font-size: 12px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; letter-spacing: 0.1px; }
+  .btn-primary { background: linear-gradient(135deg, var(--accent), var(--violet)); color: #fff; box-shadow: 0 4px 16px var(--accent-glow); }
+  .btn-primary:hover { opacity: 0.88; transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
+  .btn-ghost { background: var(--glass); border: 1px solid var(--border); color: var(--text-dim); }
+  .btn-ghost:hover { background: var(--glass-hover); border-color: var(--border-bright); color: var(--text); }
+  .btn-actions { display: flex; flex-direction: column; gap: 7px; }
+
+  /* Crawl status */
+  .crawl-status { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: var(--radius-sm); background: var(--green-dim); border: 1px solid oklch(0.65 0.16 155 / 0.25); font-size: 11px; color: var(--green); }
+  .crawl-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+  /* Topbar */
+  .topbar { height: 52px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 24px; gap: 16px; flex-shrink: 0; background: rgba(7,12,20,0.8); backdrop-filter: blur(10px); }
+  .topbar-tabs { display: flex; gap: 2px; }
+  .tab { padding: 6px 14px; border-radius: var(--radius-sm); font-size: 12.5px; font-weight: 500; cursor: pointer; color: var(--text-muted); transition: all 0.15s; border: 1px solid transparent; display: flex; align-items: center; gap: 6px; }
+  .tab:hover { color: var(--text-dim); background: var(--glass); }
+  .tab.active { color: var(--text); background: var(--glass-bright); border-color: var(--border); }
+  .tab-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--accent); display: none; }
+  .tab.active .tab-dot { display: block; }
+  .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+  .topbar-pill { font-size: 11px; font-weight: 500; color: var(--text-muted); background: var(--glass); border: 1px solid var(--border); padding: 4px 10px; border-radius: 20px; }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: linear-gradient(135deg, var(--accent), var(--violet)); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: #fff; }
+
+  /* Content */
+  .content { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  /* Cards */
+  .card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+  .card-title { font-size: 12px; font-weight: 600; color: var(--text-dim); letter-spacing: 0.3px; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .card-title-main { font-size: 14px; font-weight: 700; color: var(--text); }
+
+  /* Metric cards */
+  .metrics-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .metric-card { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px 18px; position: relative; overflow: hidden; transition: border-color 0.15s, transform 0.15s; cursor: default; }
+  .metric-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; }
+  .metric-card.blue::before { background: linear-gradient(90deg, var(--accent), transparent); }
+  .metric-card.violet::before { background: linear-gradient(90deg, var(--violet), transparent); }
+  .metric-card.green::before { background: linear-gradient(90deg, var(--green), transparent); }
+  .metric-card.amber::before { background: linear-gradient(90deg, var(--amber), transparent); }
+  .metric-card:hover { border-color: var(--border-bright); transform: translateY(-1px); }
+  .metric-label { font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.3px; margin-bottom: 8px; text-transform: uppercase; }
+  .metric-value { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; line-height: 1; margin-bottom: 8px; }
+  .metric-value.blue { color: var(--accent); }
+  .metric-value.violet { color: var(--violet); }
+  .metric-value.green { color: var(--green); }
+  .metric-value.amber { color: var(--amber); }
+  .metric-delta { font-size: 11px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+  .delta-up { color: var(--green); }
+  .delta-down { color: var(--red); }
+  .delta-label { color: var(--text-muted); font-weight: 400; }
+
+  /* Charts */
+  .charts-row { display: grid; grid-template-columns: 1fr 1.3fr; gap: 14px; }
+  @media (max-width: 1400px) {
+    .charts-row { grid-template-columns: 1fr; }
+  }
+  .chart-wrap { position: relative; height: 240px; }
+
+  /* Table */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 12.5px; color: var(--text-dim); vertical-align: middle; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+  .niche-name { color: var(--text); font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .niche-icon { width: 24px; height: 24px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+  .trend-spark { display: flex; align-items: flex-end; gap: 2px; height: 24px; }
+  .spark-bar { width: 4px; border-radius: 1px; transition: opacity 0.2s; }
+  .score-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .score-bar-bg { height: 4px; width: 80px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; }
+  .score-bar-fill { height: 100%; border-radius: 2px; }
+  .score-val { font-size: 11px; font-weight: 600; color: var(--text); }
+  .label-btn { font-size: 10.5px; font-weight: 600; padding: 3px 9px; border-radius: 20px; border: 1px solid; cursor: pointer; transition: all 0.12s; background: transparent; font-family: inherit; letter-spacing: 0.2px; }
+  .label-btn.relevant { color: var(--green); border-color: oklch(0.65 0.16 155 / 0.4); background: var(--green-dim); }
+  .label-btn.blocked { color: var(--red); border-color: oklch(0.62 0.2 25 / 0.4); background: var(--red-dim); }
+  .label-btn.review { color: var(--amber); border-color: oklch(0.72 0.16 75 / 0.4); background: var(--amber-dim); }
+  .label-btn.none { color: var(--text-muted); border-color: var(--border); }
+  .label-btn:hover { opacity: 0.75; }
+  .comp-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 3px; }
+  .comp-low { background: var(--green-dim); color: var(--green); }
+  .comp-med { background: var(--amber-dim); color: var(--amber); }
+  .comp-high { background: var(--red-dim); color: var(--red); }
+
+  /* Trend line section */
+  .trend-line-wrap { position: relative; height: 200px; }
+  .kw-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .kw-chip { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px 12px; cursor: pointer; transition: all 0.15s; }
+  .kw-chip:hover { background: var(--glass-hover); border-color: var(--border-bright); }
+  .kw-chip-term { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .kw-chip-meta { font-size: 10.5px; color: var(--text-muted); display: flex; justify-content: space-between; }
+  .kw-vol { color: var(--accent); font-weight: 600; }
+
+  /* History */
+  .history-list { display: flex; flex-direction: column; gap: 8px; }
+  .history-row { background: var(--glass); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 18px; display: flex; align-items: center; gap: 14px; transition: border-color 0.15s; cursor: default; }
+  .history-row:hover { border-color: var(--border-bright); }
+  .history-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .history-info { flex: 1; }
+  .history-title { font-size: 12.5px; font-weight: 600; color: var(--text); margin-bottom: 3px; display: flex; align-items: center; gap: 8px; }
+  .history-meta { font-size: 11px; color: var(--text-muted); display: flex; gap: 12px; }
+  .history-stats { display: flex; gap: 16px; align-items: center; }
+  .history-stat { text-align: right; }
+  .history-stat-val { font-size: 14px; font-weight: 700; color: var(--text); font-family: 'DM Mono', monospace; }
+  .history-stat-label { font-size: 10px; color: var(--text-muted); }
+  .history-actions { display: flex; gap: 6px; }
+  .icon-btn { width: 28px; height: 28px; border-radius: 5px; background: var(--glass); border: 1px solid var(--border); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; }
+  .icon-btn:hover { background: var(--glass-hover); border-color: var(--border-bright); color: var(--text); }
+
+  /* Progress bar for crawling */
+  .progress-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 4px; }
+  .progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent), var(--violet)); border-radius: 2px; transition: width 0.4s; }
+
+  /* Section header */
+  .section-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+  .section-title { font-size: 15px; font-weight: 700; color: var(--text); }
+  .section-subtitle { font-size: 12px; color: var(--text-muted); margin-left: auto; }
+  .section-divider { flex: 1; height: 1px; background: var(--border); }
+
+  /* Tweaks panel */
+  .tweaks-panel { position: fixed; bottom: 20px; right: 20px; width: 240px; background: #0f1928; border: 1px solid var(--border-bright); border-radius: var(--radius); padding: 16px; z-index: 1000; box-shadow: 0 20px 60px rgba(0,0,0,0.5); display: none; }
+  .tweaks-panel.visible { display: block; }
+  .tweaks-title { font-size: 12px; font-weight: 700; color: var(--text); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; }
+  .tweak-row { margin-bottom: 12px; }
+  .tweak-label { font-size: 10.5px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .tweak-options { display: flex; gap: 5px; flex-wrap: wrap; }
+  .tweak-opt { font-size: 11px; padding: 4px 9px; border-radius: 4px; border: 1px solid var(--border); color: var(--text-muted); cursor: pointer; transition: all 0.12s; background: transparent; font-family: inherit; }
+  .tweak-opt.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent); }
+  .tweak-opt:hover:not(.active) { border-color: var(--border-bright); color: var(--text); }
+
+  /* Tag */
+  .tag { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; background: var(--accent-dim); color: var(--accent); border: 1px solid oklch(0.62 0.2 245 / 0.3); letter-spacing: 0.2px; }
+  .tag-violet { background: var(--violet-dim); color: var(--violet); border-color: oklch(0.62 0.2 285 / 0.3); }
+
+  /* Empty/loading states */
+  .empty-state { text-align: center; padding: 40px 20px; color: var(--text-muted); font-size: 13px; }
+  .empty-icon { font-size: 28px; margin-bottom: 10px; opacity: 0.4; }
+
+  /* Range slider */
+  .range-wrap { display: flex; align-items: center; gap: 8px; }
+  input[type=range] { flex: 1; height: 4px; appearance: none; background: rgba(255,255,255,0.1); border-radius: 2px; outline: none; cursor: pointer; }
+  input[type=range]::-webkit-slider-thumb { appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 6px var(--accent-glow); }
+  .range-val { font-size: 11px; font-family: 'DM Mono', monospace; color: var(--accent); min-width: 28px; text-align: right; }
+
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  /* Sub-niches accordion */
+  .subniche-list { display: flex; flex-direction: column; gap: 6px; }
+  .subniche-item { border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; transition: border-color 0.15s; }
+  .subniche-item.expanded { border-color: var(--border-bright); }
+  .subniche-header { display: flex; align-items: center; gap: 10px; padding: 11px 14px; cursor: pointer; user-select: none; transition: background 0.12s; }
+  .subniche-header:hover { background: var(--glass-hover); }
+  .subniche-rank { font-size: 10px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--text-muted); background: rgba(255,255,255,0.06); width: 20px; height: 20px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .subniche-name { font-size: 12.5px; font-weight: 600; color: var(--text); flex: 1; }
+  .subniche-score { font-size: 11px; font-weight: 600; color: var(--text-muted); margin-right: 4px; }
+  .subniche-score span { font-family: 'DM Mono', monospace; }
+  .subniche-chevron { color: var(--text-muted); transition: transform 0.18s; }
+  .subniche-chevron.open { transform: rotate(180deg); }
+  .subniche-body { padding: 4px 14px 12px 44px; display: flex; flex-direction: column; gap: 6px; }
+  .subniche-kw { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-dim); }
+  .subniche-kw::before { content: ''; width: 4px; height: 4px; border-radius: 50%; background: var(--text-muted); flex-shrink: 0; }
+  .subniche-kw-vol { font-family: 'DM Mono', monospace; font-size: 11px; font-weight: 600; color: var(--green); margin-left: auto; }
+  .subniche-kw-trend { font-size: 10px; padding: 1px 6px; border-radius: 3px; }
+  .subniche-kw-trend.up { background: var(--green-dim); color: var(--green); }
+  .subniche-kw-trend.flat { background: rgba(255,255,255,0.06); color: var(--text-muted); }
+  .subniche-kw-trend.down { background: var(--red-dim); color: var(--red); }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef, useCallback } = React;
+
+// ── Data ────────────────────────────────────────────────────────
+const NICHES = [
+  { id:1, name:'Posture Correctors', cat:'Health', icon:'🧘', score:91, trend:'up', comp:'Low', vol:'74K', margin:'68%', label:'relevant', spark:[30,42,38,55,60,72,88,91] },
+  { id:2, name:'LED Grow Lights', cat:'Garden', icon:'💡', score:87, trend:'up', comp:'Med', vol:'58K', margin:'54%', label:'relevant', spark:[40,45,55,52,60,70,80,87] },
+  { id:3, name:'Pet Seat Belts', cat:'Pets', icon:'🐾', score:79, trend:'up', comp:'Low', vol:'32K', margin:'72%', label:'review', spark:[20,28,35,33,40,55,65,79] },
+  { id:4, name:'Bamboo Toothbrushes', cat:'Personal', icon:'🌿', score:76, trend:'flat', comp:'High', vol:'89K', margin:'41%', label:'none', spark:[60,65,62,68,70,72,74,76] },
+  { id:5, name:'Car Phone Mounts', cat:'Auto', icon:'🚗', score:73, trend:'down', comp:'High', vol:'112K', margin:'38%', label:'blocked', spark:[90,82,78,80,75,72,70,73] },
+  { id:6, name:'Silicone Baking Mats', cat:'Kitchen', icon:'🍳', score:68, trend:'up', comp:'Med', vol:'44K', margin:'62%', label:'none', spark:[30,35,40,42,50,58,64,68] },
+  { id:7, name:'Resistance Bands Set', cat:'Fitness', icon:'💪', score:65, trend:'flat', comp:'High', vol:'96K', margin:'44%', label:'relevant', spark:[50,55,60,58,62,65,64,65] },
+  { id:8, name:'Smart Plug Adapters', cat:'Electronics', icon:'🔌', score:61, trend:'up', comp:'Med', vol:'67K', margin:'49%', label:'none', spark:[28,32,40,45,50,55,58,61] },
+];
+
+const CATEGORIES = [
+  { name:'Health & Wellness', count:24, children:['Supplements','Posture & Back','Fitness Gear','Mental Wellness'] },
+  { name:'Home & Garden', count:31, children:['Indoor Plants','Smart Home','Kitchen Tools','Cleaning'] },
+  { name:'Pets', count:18, children:['Dog Accessories','Cat Products','Pet Health','Aquarium'] },
+  { name:'Electronics', count:42, children:['Mobile Accessories','Wearables','Smart Home','Audio'] },
+  { name:'Automotive', count:15, children:['Car Care','Interior','Safety Accessories'] },
+  { name:'Sports & Outdoors', count:27, children:['Camping','Cycling','Fitness','Water Sports'] },
+];
+
+const CRAWL_HISTORY = [
+  { id:1, label:'Weekly Scan — Health & Fitness', time:'Today, 09:14 AM', duration:'4m 22s', niches:312, keywords:1840, status:'success', tags:['Health','Fitness'] },
+  { id:2, label:'Deep Crawl — Electronics', time:'Yesterday, 6:38 PM', duration:'11m 05s', niches:587, keywords:4120, status:'success', tags:['Electronics'] },
+  { id:3, label:'Quick Scan — Pets Niche', time:'Apr 20, 2026', duration:'2m 11s', niches:98, keywords:542, status:'success', tags:['Pets'] },
+  { id:4, label:'Full Category Sweep', time:'Apr 18, 2026', duration:'28m 44s', niches:1204, keywords:9830, status:'success', tags:['All'] },
+  { id:5, label:'Competitor Keyword Probe', time:'Apr 15, 2026', duration:'6m 33s', niches:220, keywords:1670, status:'partial', tags:['Auto','Kitchen'] },
+];
+
+const KW_SUGGESTIONS = [
+  { term:'posture corrector for office', vol:'18.4K', cpc:'$1.20', comp:'Low' },
+  { term:'back brace support belt', vol:'14.2K', cpc:'$1.55', comp:'Med' },
+  { term:'lumbar support cushion', vol:'22.1K', cpc:'$0.92', comp:'Med' },
+  { term:'ergonomic back support', vol:'9.8K', cpc:'$1.80', comp:'Low' },
+  { term:'posture belt women', vol:'7.3K', cpc:'$1.10', comp:'Low' },
+  { term:'upper back posture corrector', vol:'11.6K', cpc:'$1.35', comp:'Med' },
+];
+
+// ── Sub-niches data ──────────────────────────────────────────
+const SUB_NICHES = [
+  { id:1, name:'Posture Correctors', score:91, icon:'🧘', keywords:[
+    { term:'posture corrector for back', vol:'72600', trend:'up' },
+    { term:'posture brace women', vol:'57500', trend:'up' },
+    { term:'posture corrector invisible', vol:'34200', trend:'up' },
+    { term:'magnetic posture support', vol:'21800', trend:'flat' },
+    { term:'adjustable posture belt', vol:'18400', trend:'up' },
+  ]},
+  { id:2, name:'LED Grow Lights', score:87, icon:'💡', keywords:[
+    { term:'led grow light full spectrum', vol:'63400', trend:'up' },
+    { term:'indoor plant grow light', vol:'48200', trend:'up' },
+    { term:'grow light tent kit', vol:'31900', trend:'flat' },
+    { term:'led grow light 1000w', vol:'27100', trend:'down' },
+    { term:'grow lamp for seedlings', vol:'19500', trend:'up' },
+  ]},
+  { id:3, name:'Pet Seat Belts', score:79, icon:'🐾', keywords:[
+    { term:'dog car harness seat belt', vol:'44300', trend:'up' },
+    { term:'pet travel safety belt', vol:'28700', trend:'up' },
+    { term:'adjustable dog seat belt', vol:'19600', trend:'flat' },
+    { term:'cat carrier car seat', vol:'15200', trend:'up' },
+    { term:'puppy car restraint', vol:'11800', trend:'flat' },
+  ]},
+  { id:4, name:'Bamboo Toothbrushes', score:76, icon:'🌿', keywords:[
+    { term:'bamboo toothbrush eco pack', vol:'38900', trend:'flat' },
+    { term:'biodegradable toothbrush', vol:'29400', trend:'up' },
+    { term:'natural bamboo brush kids', vol:'16700', trend:'up' },
+    { term:'charcoal bamboo toothbrush', vol:'12300', trend:'down' },
+    { term:'bamboo brush with case', vol:'9800', trend:'flat' },
+  ]},
+  { id:5, name:'Silicone Baking Mats', score:68, icon:'🍳', keywords:[
+    { term:'silicone baking sheet liner', vol:'52100', trend:'up' },
+    { term:'non-stick baking mat set', vol:'41300', trend:'flat' },
+    { term:'silicone mat for oven', vol:'28600', trend:'up' },
+    { term:'pastry rolling mat', vol:'17400', trend:'flat' },
+    { term:'macaron baking mat', vol:'14200', trend:'up' },
+  ]},
+];
+
+// ── Sub-niches Block ─────────────────────────────────────────
+function SubNichesBlock() {
+  const [openId, setOpenId] = useState(null);
+  const toggle = (id) => setOpenId(prev => prev === id ? null : id);
+  const scoreColor = s => s >= 85 ? 'var(--green)' : s >= 70 ? 'var(--accent)' : 'var(--amber)';
+
+  return (
+    <div className="card">
+      <div className="card-title" style={{marginBottom:14}}>
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{color:'var(--accent)'}}>
+          <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.5"/>
+          <path d="M5 8h6M8 5v6" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+        </svg>
+        <span className="card-title-main">Sub-niches Top-5</span>
+        <span style={{marginLeft:'auto',fontSize:11,color:'var(--text-muted)'}}>Click to expand keywords</span>
+      </div>
+      <div className="subniche-list">
+        {SUB_NICHES.map((n, i) => (
+          <div key={n.id} className={`subniche-item ${openId===n.id?'expanded':''}`}>
+            <div className="subniche-header" onClick={()=>toggle(n.id)}>
+              <div className="subniche-rank">{i+1}</div>
+              <span style={{fontSize:15,lineHeight:1}}>{n.icon}</span>
+              <span className="subniche-name">{n.name}</span>
+              <span className="subniche-score">оцінка: <span style={{color:scoreColor(n.score)}}>{n.score}</span></span>
+              <svg className={`subniche-chevron ${openId===n.id?'open':''}`} width="13" height="13" viewBox="0 0 12 12" fill="none">
+                <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+            </div>
+            {openId===n.id && (
+              <div className="subniche-body">
+                {n.keywords.map((kw, ki) => (
+                  <div className="subniche-kw" key={ki}>
+                    <span>{kw.term}</span>
+                    <span className={`subniche-kw-trend ${kw.trend}`}>{kw.trend==='up'?'↑ Росте':kw.trend==='down'?'↓ Падає':'→ Стабільно'}</span>
+                    <span className="subniche-kw-vol">{Number(kw.vol).toLocaleString()}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Sparkline ─────────────────────────────────────────────────
+function Sparkline({ data, color }) {
+  const max = Math.max(...data);
+  return (
+    <div className="trend-spark">
+      {data.map((v,i) => (
+        <div key={i} className="spark-bar" style={{
+          height: `${(v/max)*100}%`,
+          background: i === data.length-1 ? color : `${color}55`,
+        }} />
+      ))}
+    </div>
+  );
+}
+
+// ── Label Cycle ───────────────────────────────────────────────
+const LABELS = ['none','relevant','blocked','review'];
+function LabelBtn({ label, onCycle }) {
+  const map = { relevant:'Relevant', blocked:'Blocked', review:'Review', none:'— Label' };
+  return <button className={`label-btn ${label}`} onClick={onCycle}>{map[label]}</button>;
+}
+
+// ── Score Bar ─────────────────────────────────────────────────
+function ScoreBar({ score }) {
+  const color = score >= 80 ? 'var(--green)' : score >= 65 ? 'var(--accent)' : 'var(--amber)';
+  return (
+    <div className="score-bar-wrap">
+      <div className="score-bar-bg">
+        <div className="score-bar-fill" style={{ width:`${score}%`, background:color }} />
+      </div>
+      <span className="score-val">{score}</span>
+    </div>
+  );
+}
+
+// ── Bar Chart ─────────────────────────────────────────────────
+function BarChart({ data }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const labels = data.map(d => d.name.length > 18 ? d.name.slice(0,18)+'…' : d.name);
+    const scores = data.map(d => d.score);
+    const colors = scores.map(s => s >= 85 ? 'oklch(0.62 0.2 245)' : s >= 70 ? 'oklch(0.62 0.2 265)' : 'oklch(0.62 0.2 285)');
+    chartRef.current = new Chart(ref.current, {
+      type:'bar',
+      data:{ labels, datasets:[{ data:scores, backgroundColor:colors, borderRadius:5, borderSkipped:false, barThickness:18 }] },
+      options:{
+        indexAxis:'y', responsive:true, maintainAspectRatio:false, animation:{ duration:600 },
+        plugins:{ legend:{display:false}, tooltip:{
+          backgroundColor:'#111827', borderColor:'rgba(255,255,255,0.1)', borderWidth:1,
+          titleColor:'#e2e8f0', bodyColor:'#94a3b8', padding:10,
+          callbacks:{ label: ctx => ` Score: ${ctx.raw}` }
+        }},
+        scales:{
+          x:{ min:0, max:100, grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ color:'#64748b', font:{size:10} }, border:{color:'transparent'} },
+          y:{ grid:{ display:false }, ticks:{ color:'#94a3b8', font:{size:11} }, border:{color:'transparent'} }
+        }
+      }
+    });
+    return () => { if(chartRef.current) chartRef.current.destroy(); };
+  }, [data]);
+  return <div className="chart-wrap"><canvas ref={ref} /></div>;
+}
+
+// ── Trend Line Chart ──────────────────────────────────────────
+function TrendChart({ keyword }) {
+  const ref = useRef(null);
+  const chartRef = useRef(null);
+  useEffect(() => {
+    if (!ref.current) return;
+    if (chartRef.current) chartRef.current.destroy();
+    const months = ['Oct','Nov','Dec','Jan','Feb','Mar','Apr'];
+    const base = [35,40,45,42,55,68,82];
+    const noise = base.map(v => Math.min(100, Math.max(10, v + (Math.random()-0.5)*10)));
+    chartRef.current = new Chart(ref.current, {
+      type:'line',
+      data:{
+        labels:months,
+        datasets:[{
+          data: noise, tension:0.4, fill:true,
+          borderColor:'oklch(0.62 0.2 245)', borderWidth:2,
+          backgroundColor: (ctx) => {
+            const grad = ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);
+            grad.addColorStop(0,'oklch(0.62 0.2 245 / 0.25)');
+            grad.addColorStop(1,'oklch(0.62 0.2 245 / 0)');
+            return grad;
+          },
+          pointBackgroundColor:'oklch(0.62 0.2 245)',
+          pointRadius:4, pointHoverRadius:6,
+        }]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{ legend:{display:false}, tooltip:{
+          backgroundColor:'#111827', borderColor:'rgba(255,255,255,0.1)', borderWidth:1,
+          titleColor:'#e2e8f0', bodyColor:'#94a3b8', padding:10,
+          callbacks:{ label: ctx => ` Interest: ${Math.round(ctx.raw)}` }
+        }},
+        scales:{
+          x:{ grid:{ color:'rgba(255,255,255,0.04)' }, ticks:{ color:'#64748b', font:{size:11} }, border:{color:'transparent'} },
+          y:{ min:0, max:100, grid:{ color:'rgba(255,255,255,0.05)' }, ticks:{ color:'#64748b', font:{size:10}, stepSize:25 }, border:{color:'transparent'} }
+        }
+      }
+    });
+    return () => { if(chartRef.current) chartRef.current.destroy(); };
+  }, [keyword]);
+  return <div className="trend-line-wrap"><canvas ref={ref} /></div>;
+}
+
+// ── Category Tree ─────────────────────────────────────────────
+function CategoryTree({ checkedCats, onToggle }) {
+  const [open, setOpen] = useState({ 0:true, 1:false, 2:false, 3:false, 4:false, 5:false });
+  const [checkedChildren, setCheckedChildren] = useState({});
+
+  const toggleParent = (i) => setOpen(p => ({...p, [i]:!p[i]}));
+  const toggleCheck = (name) => onToggle(name);
+  const toggleChild = (key) => setCheckedChildren(p => ({...p, [key]:!p[key]}));
+
+  return (
+    <div className="cat-tree">
+      {CATEGORIES.map((cat, i) => (
+        <div key={i}>
+          <div className="cat-parent" onClick={() => toggleParent(i)}>
+            <div className={`cat-checkbox ${checkedCats.includes(cat.name) ? 'checked' : ''}`}
+              onClick={e => { e.stopPropagation(); toggleCheck(cat.name); }}>
+              {checkedCats.includes(cat.name) && <svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5L3.5 6L8 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+            </div>
+            <span className="cat-label">{cat.name}</span>
+            <span className="cat-count">{cat.count}</span>
+            <svg className={`cat-chevron ${open[i]?'open':''}`} width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <path d="M4 2l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+          {open[i] && (
+            <div className="cat-children">
+              {cat.children.map((child, j) => {
+                const key = `${i}-${j}`;
+                return (
+                  <div className="cat-child" key={j} onClick={() => toggleChild(key)}>
+                    <div className={`cat-checkbox ${checkedChildren[key] ? 'checked' : ''}`} style={{width:12,height:12}}>
+                      {checkedChildren[key] && <svg width="8" height="6" viewBox="0 0 8 6" fill="none"><path d="M1 3L3 5L7 1" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>}
+                    </div>
+                    <span className="cat-child-label">{child}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Overview Section ──────────────────────────────────────────
+function OverviewSection({ niches, setNiches, minScore }) {
+  const filtered = niches.filter(n => n.score >= minScore);
+  const cycleLabel = (id) => {
+    setNiches(prev => prev.map(n => {
+      if(n.id !== id) return n;
+      const idx = LABELS.indexOf(n.label);
+      return {...n, label: LABELS[(idx+1)%LABELS.length]};
+    }));
+  };
+  const relevant = niches.filter(n=>n.label==='relevant').length;
+  const reviewed = niches.filter(n=>n.label!=='none').length;
+  const avgScore = Math.round(niches.reduce((a,n)=>a+n.score,0)/niches.length);
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      {/* Metrics */}
+      <div className="metrics-grid">
+        <div className="metric-card blue">
+          <div className="metric-label">Niches Found</div>
+          <div className="metric-value blue">{niches.length * 38}</div>
+          <div className="metric-delta"><span className="delta-up">↑ 14%</span><span className="delta-label"> vs last run</span></div>
+        </div>
+        <div className="metric-card green">
+          <div className="metric-label">High-Score Niches</div>
+          <div className="metric-value green">{filtered.length * 12}</div>
+          <div className="metric-delta"><span className="delta-up">↑ 8%</span><span className="delta-label"> score ≥ {minScore}</span></div>
+        </div>
+        <div className="metric-card violet">
+          <div className="metric-label">Avg Trend Score</div>
+          <div className="metric-value violet">{avgScore}</div>
+          <div className="metric-delta"><span className="delta-up">↑ 3pts</span><span className="delta-label"> this week</span></div>
+        </div>
+        <div className="metric-card amber">
+          <div className="metric-label">Labeled Niches</div>
+          <div className="metric-value amber">{reviewed}/{niches.length}</div>
+          <div className="metric-delta"><span style={{color:'var(--amber)'}}>{relevant} relevant</span><span className="delta-label"> marked</span></div>
+        </div>
+      </div>
+
+      {/* Charts row */}
+      <div className="charts-row">
+        <div className="card">
+          <div className="card-title"><span className="card-title-main">Score Distribution</span></div>
+          <BarChart data={[...niches].sort((a,b)=>b.score-a.score).slice(0,8)} />
+        </div>
+        <div className="card">
+          <div className="card-title">
+            <span className="card-title-main">Top 10 Niches</span>
+            <div style={{marginLeft:'auto',display:'flex',gap:6}}>
+              <span className="tag">Sorted by Score</span>
+            </div>
+          </div>
+          <div className="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Niche</th>
+                  <th>Score</th>
+                  <th>Trend</th>
+                  <th>Comp</th>
+                  <th>Label</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...niches].sort((a,b)=>b.score-a.score).map((n,i) => (
+                  <tr key={n.id}>
+                    <td style={{color:'var(--text-muted)',fontFamily:'DM Mono',fontSize:11}}>{String(i+1).padStart(2,'0')}</td>
+                    <td>
+                      <div className="niche-name">
+                        <div className="niche-icon" style={{background:'rgba(255,255,255,0.06)'}}>{n.icon}</div>
+                        {n.name}
+                      </div>
+                    </td>
+                    <td><ScoreBar score={n.score} /></td>
+                    <td><Sparkline data={n.spark} color={n.trend==='up'?'oklch(0.65 0.16 155)':n.trend==='down'?'oklch(0.62 0.2 25)':'oklch(0.62 0.2 245)'} /></td>
+                    <td><span className={`comp-badge comp-${n.comp.toLowerCase()}`}>{n.comp}</span></td>
+                    <td><LabelBtn label={n.label} onCycle={()=>cycleLabel(n.id)} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      {/* Sub-niches */}
+      <SubNichesBlock />
+    </div>
+  );
+}
+
+// ── Search Section ────────────────────────────────────────────
+function SearchSection() {
+  const [query, setQuery] = useState('Posture Correctors');
+  const [inputVal, setInputVal] = useState('Posture Correctors');
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState(72);
+
+  const runSearch = () => {
+    setLoading(true);
+    setProgress(0);
+    let p = 0;
+    const iv = setInterval(() => {
+      p += Math.random()*25;
+      if(p >= 100) { p = 100; clearInterval(iv); setLoading(false); setQuery(inputVal); }
+      setProgress(Math.min(100,p));
+    }, 200);
+  };
+
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div className="card">
+        <div className="card-title"><span className="card-title-main">Trend Analysis</span></div>
+        <div style={{display:'flex',gap:8,marginBottom:16}}>
+          <div className="search-wrap" style={{flex:1}}>
+            <svg className="search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+              <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+            <input className="search-input" value={inputVal} onChange={e=>setInputVal(e.target.value)}
+              onKeyDown={e=>e.key==='Enter'&&runSearch()} placeholder="Enter niche or keyword…" />
+          </div>
+          <button className="btn btn-primary" style={{paddingLeft:18,paddingRight:18}} onClick={runSearch}>
+            {loading ? 'Analyzing…' : 'Analyze'}
+          </button>
+          <div style={{display:'flex',gap:5}}>
+            {['7D','30D','90D','1Y'].map(t => (
+              <button key={t} className="btn btn-ghost" style={{padding:'8px 10px',fontSize:11}}>{t}</button>
+            ))}
+          </div>
+        </div>
+        {loading && <div className="progress-bar" style={{marginBottom:14}}><div className="progress-fill" style={{width:`${progress}%`}}/></div>}
+        <TrendChart keyword={query} />
+        <div style={{display:'flex',gap:16,marginTop:14}}>
+          {[{label:'Peak Interest',val:'94',sub:'Mar 2026'},{label:'Current Index',val:'82',sub:'+11% MoM'},{label:'Seasonality',val:'Low',sub:'Year-round'},{label:'Forecast',val:'↑ Rising',sub:'Next 30d'}].map((m,i)=>(
+            <div key={i} style={{flex:1,background:'rgba(255,255,255,0.03)',border:'1px solid var(--border)',borderRadius:8,padding:'10px 12px'}}>
+              <div style={{fontSize:10,color:'var(--text-muted)',marginBottom:4,textTransform:'uppercase',letterSpacing:0.5}}>{m.label}</div>
+              <div style={{fontSize:16,fontWeight:700,color:'var(--text)',marginBottom:2}}>{m.val}</div>
+              <div style={{fontSize:10.5,color:'var(--text-muted)'}}>{m.sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <div className="card-title">
+          <span className="card-title-main">Related Keywords</span>
+          <span style={{marginLeft:'auto',fontSize:11,color:'var(--text-muted)'}}>{KW_SUGGESTIONS.length} suggestions</span>
+        </div>
+        <div className="kw-grid">
+          {KW_SUGGESTIONS.map((kw,i) => (
+            <div className="kw-chip" key={i}>
+              <div className="kw-chip-term">{kw.term}</div>
+              <div className="kw-chip-meta">
+                <span><span className="kw-vol">{kw.vol}</span> vol/mo</span>
+                <span>{kw.cpc} CPC</span>
+                <span className={`comp-badge comp-${kw.comp.toLowerCase()}`}>{kw.comp}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── History Section ───────────────────────────────────────────
+function HistorySection() {
+  const [runs, setRuns] = useState(CRAWL_HISTORY);
+  return (
+    <div style={{display:'flex',flexDirection:'column',gap:20}}>
+      <div className="card">
+        <div className="card-title" style={{marginBottom:0}}>
+          <span className="card-title-main">Crawl History</span>
+          <div style={{marginLeft:'auto',display:'flex',gap:8}}>
+            <span className="tag">{runs.length} runs</span>
+            <button className="btn btn-ghost" style={{padding:'5px 12px',fontSize:11}}>Export All</button>
+          </div>
+        </div>
+      </div>
+      <div className="history-list">
+        {runs.map(run => (
+          <div className="history-row" key={run.id}>
+            <div className="history-status-dot" style={{
+              background: run.status==='success' ? 'var(--green)' : 'var(--amber)',
+              boxShadow: `0 0 6px ${run.status==='success' ? 'var(--green)' : 'var(--amber)'}`
+            }}/>
+            <div className="history-info">
+              <div className="history-title">
+                {run.label}
+                {run.tags.map(t=><span key={t} className="tag" style={{fontSize:9,padding:'1px 6px'}}>{t}</span>)}
+              </div>
+              <div className="history-meta">
+                <span>🕐 {run.time}</span>
+                <span>⏱ {run.duration}</span>
+                <span style={{color: run.status==='success'?'var(--green)':'var(--amber)'}}>
+                  {run.status==='success'?'✓ Complete':'⚠ Partial'}
+                </span>
+              </div>
+            </div>
+            <div className="history-stats">
+              <div className="history-stat">
+                <div className="history-stat-val">{run.niches.toLocaleString()}</div>
+                <div className="history-stat-label">Niches</div>
+              </div>
+              <div className="history-stat">
+                <div className="history-stat-val">{run.keywords.toLocaleString()}</div>
+                <div className="history-stat-label">Keywords</div>
+              </div>
+            </div>
+            <div className="history-actions">
+              <div className="icon-btn" title="Load results">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+              <div className="icon-btn" title="Export CSV">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M8 3v8M5 8l3 3 3-3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                  <rect x="2" y="11" width="12" height="3" rx="1" stroke="currentColor" strokeWidth="1.3"/>
+                </svg>
+              </div>
+              <div className="icon-btn" title="Delete" onClick={() => setRuns(r=>r.filter(x=>x.id!==run.id))}>
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                  <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                </svg>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Main App ──────────────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState('overview');
+  const [niches, setNiches] = useState(NICHES);
+  const [checkedCats, setCheckedCats] = useState(['Health & Wellness']);
+  const [region, setRegion] = useState('US');
+  const [timeframe, setTimeframe] = useState('30d');
+  const [keyword, setKeyword] = useState('');
+  const [crawling, setCrawling] = useState(false);
+  const [crawlPct, setCrawlPct] = useState(0);
+  const [tweaksVisible, setTweaksVisible] = useState(false);
+  const [minScore, setMinScore] = useState(60);
+  const [accentHue, setAccentHue] = useState(245);
+
+  const toggleCat = (name) => setCheckedCats(p => p.includes(name) ? p.filter(c=>c!==name) : [...p,name]);
+
+  const runCrawler = () => {
+    if(crawling) return;
+    setCrawling(true); setCrawlPct(0);
+    let p = 0;
+    const iv = setInterval(() => {
+      p += Math.random()*8;
+      if(p>=100) { p=100; clearInterval(iv); setTimeout(()=>setCrawling(false),600); }
+      setCrawlPct(Math.min(100,p));
+    }, 220);
+  };
+
+  // Tweaks
+  useEffect(() => {
+    document.documentElement.style.setProperty('--accent', `oklch(0.62 0.2 ${accentHue})`);
+    document.documentElement.style.setProperty('--accent-dim', `oklch(0.62 0.2 ${accentHue} / 0.15)`);
+    document.documentElement.style.setProperty('--accent-glow', `oklch(0.62 0.2 ${accentHue} / 0.3)`);
+  }, [accentHue]);
+
+  useEffect(() => {
+    const handler = e => {
+      if(e.data?.type==='__activate_edit_mode') setTweaksVisible(true);
+      if(e.data?.type==='__deactivate_edit_mode') setTweaksVisible(false);
+    };
+    window.addEventListener('message', handler);
+    window.parent.postMessage({type:'__edit_mode_available'},'*');
+    return () => window.removeEventListener('message',handler);
+  }, []);
+
+  const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+    "accentHue": 285,
+    "minScore": 60
+  }/*EDITMODE-END*/;
+
+  return (
+    <div className="app">
+      {/* Sidebar */}
+      <aside className="sidebar">
+        <div className="sidebar-header">
+          <div className="logo">
+            <div className="logo-icon">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <path d="M2 12L6 7l3 3 5-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="12" cy="4" r="2" fill="white" fillOpacity="0.9"/>
+              </svg>
+            </div>
+            <span className="logo-text">Trends Analyzer</span>
+            <span className="logo-badge">PRO</span>
+          </div>
+        </div>
+
+        <div className="sidebar-body">
+          {/* Region & Timeframe */}
+          <div>
+            <div className="sidebar-section-label">Market</div>
+            <div className="select-row">
+              <select className="sel" value={region} onChange={e=>setRegion(e.target.value)}>
+                {['US','UK','DE','AU','CA','FR','JP'].map(r=><option key={r}>{r}</option>)}
+              </select>
+              <select className="sel" value={timeframe} onChange={e=>setTimeframe(e.target.value)}>
+                <option value="7d">7 Days</option>
+                <option value="30d">30 Days</option>
+                <option value="90d">90 Days</option>
+                <option value="12m">12 Months</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Keyword search */}
+          <div>
+            <div className="sidebar-section-label">Keyword Filter</div>
+            <div className="search-wrap">
+              <svg className="search-icon" width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="currentColor" strokeWidth="1.5"/>
+                <path d="M11 11l3 3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              <input className="search-input" placeholder="Filter niches…" value={keyword} onChange={e=>setKeyword(e.target.value)} />
+            </div>
+          </div>
+
+          {/* Score filter */}
+          <div>
+            <div className="sidebar-section-label">Min Score</div>
+            <div className="range-wrap">
+              <input type="range" min={0} max={100} step={5} value={minScore} onChange={e=>setMinScore(+e.target.value)} />
+              <span className="range-val">{minScore}</span>
+            </div>
+          </div>
+
+          {/* Category tree */}
+          <div>
+            <div className="sidebar-section-label">Categories</div>
+            <CategoryTree checkedCats={checkedCats} onToggle={toggleCat} />
+          </div>
+
+          {/* Actions */}
+          <div className="btn-actions" style={{marginTop:'auto'}}>
+            {crawling && (
+              <div className="crawl-status">
+                <div className="crawl-dot"/>
+                <div style={{flex:1}}>
+                  <div>Crawling… {Math.round(crawlPct)}%</div>
+                  <div className="progress-bar" style={{marginTop:4}}><div className="progress-fill" style={{width:`${crawlPct}%`}}/></div>
+                </div>
+              </div>
+            )}
+            <button className="btn btn-primary" onClick={runCrawler} disabled={crawling}>
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <circle cx="8" cy="8" r="6.5" stroke="white" strokeWidth="1.5"/>
+                <path d="M6 5.5l5 2.5-5 2.5V5.5z" fill="white"/>
+              </svg>
+              {crawling ? 'Running…' : 'Run Crawler'}
+            </button>
+            <button className="btn btn-ghost">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path d="M3 8h10M8 3v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
+              Export Data
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main */}
+      <div className="main">
+        <div className="topbar">
+          <div className="topbar-tabs">
+            {[
+              {id:'overview', label:'Overview', icon:'▦'},
+              {id:'search', label:'Trend Search', icon:'↗'},
+              {id:'history', label:'Run History', icon:'⏱'},
+            ].map(t => (
+              <div key={t.id} className={`tab ${tab===t.id?'active':''}`} onClick={()=>setTab(t.id)}>
+                <div className="tab-dot"/>
+                {t.label}
+              </div>
+            ))}
+          </div>
+          <div className="topbar-right">
+            <span className="topbar-pill">Region: {region}</span>
+            <span className="topbar-pill">Last run: Today 9:14 AM</span>
+            <div className="avatar">JD</div>
+          </div>
+        </div>
+
+        <div className="content">
+          {tab === 'overview' && <OverviewSection niches={niches.filter(n=>!keyword||n.name.toLowerCase().includes(keyword.toLowerCase()))} setNiches={setNiches} minScore={minScore} />}
+          {tab === 'search' && <SearchSection />}
+          {tab === 'history' && <HistorySection />}
+        </div>
+      </div>
+
+      {/* Tweaks panel */}
+      <div className={`tweaks-panel ${tweaksVisible?'visible':''}`}>
+        <div className="tweaks-title">
+          Tweaks
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style={{cursor:'pointer',color:'var(--text-muted)'}} onClick={()=>setTweaksVisible(false)}>
+            <path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+          </svg>
+        </div>
+
+        <div className="tweak-row">
+          <div className="tweak-label">Accent Color</div>
+          <div className="tweak-options">
+            {[{label:'Blue',hue:245},{label:'Cyan',hue:210},{label:'Violet',hue:285},{label:'Emerald',hue:175},{label:'Rose',hue:15}].map(c=>(
+              <button key={c.hue} className={`tweak-opt ${accentHue===c.hue?'active':''}`}
+                onClick={()=>{setAccentHue(c.hue);window.parent.postMessage({type:'__edit_mode_set_keys',edits:{accentHue:c.hue}},'*');}}>
+                {c.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="tweak-row">
+          <div className="tweak-label">Min Score Threshold</div>
+          <div className="range-wrap">
+            <input type="range" min={0} max={100} step={5} value={minScore} onChange={e=>{setMinScore(+e.target.value);window.parent.postMessage({type:'__edit_mode_set_keys',edits:{minScore:+e.target.value}},'*');}} />
+            <span className="range-val">{minScore}</span>
+          </div>
+        </div>
+
+        <div className="tweak-row">
+          <div className="tweak-label">Active Tab</div>
+          <div className="tweak-options">
+            {['overview','search','history'].map(t=>(
+              <button key={t} className={`tweak-opt ${tab===t?'active':''}`} onClick={()=>setTab(t)} style={{textTransform:'capitalize'}}>{t}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>
